@@ -4,8 +4,7 @@ project(sguclient C)
 set(CMAKE_C_STANDARD 17)
 
 include_directories(sguclient-linux)
-target_link_libraries(sguclient -lpcap)
-target_link_libraries(sguclient -lpthread) 
+
 add_executable(sguclient
         sguclient-linux/dprotocol.c
         sguclient-linux/dprotocol.h
@@ -20,3 +19,7 @@ add_executable(sguclient
         sguclient-linux/sha1.h
         sguclient-linux/md4.c
         sguclient-linux/md4.h)
+        
+        
+target_link_libraries(sguclient -lpcap)
+target_link_libraries(sguclient -lpthread) 
