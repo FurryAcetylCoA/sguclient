@@ -65,7 +65,7 @@ jobs:
          # Artifact name
          name: sguclient
          # A file, directory or wildcard pattern that describes what to upload
-         path: ./sguclient
+         path: /home/runner/work/sguclient/sguclient/
          # The desired behavior if no files are found using the provided path.
          if-no-files-found: error
          # Duration after which artifact will expire in days. 0 means using default retention. Minimum 1 day. Maximum 90 days unless changed from the repository settings page.
