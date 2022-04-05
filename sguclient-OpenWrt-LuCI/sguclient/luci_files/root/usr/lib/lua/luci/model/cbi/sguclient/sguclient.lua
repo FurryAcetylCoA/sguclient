@@ -47,6 +47,7 @@ end
 
 
 b=s:option(Button,"GetIpFromIf",translate("Get Ip Address from interface"))
+b.inputtitle = translate("Click Refresh to get")
 
 wanip = s:option(Value, "wanip", translate("Wan IP Address"),translate("Authentication interface IPv4 address(must be the same as which filled in 'Network-Interfaces')"))
 wanip.datatype="ip4addr"

@@ -23,22 +23,21 @@ endef
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
 	$(CP) ./src/* $(PKG_BUILD_DIR)/
-	$(foreach po,$(wildcard ${CURDIR}/i18n/zh-cn/*.po), \  
-		po2lmo $(po) $(PKG_BUILD_DIR)/$(patsubst %.po,%.lmo,$(notdir $(po)));)  
 endef
 
 define Package/sguclient/install
 	$(INSTALL_DIR) $(1)/bin
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi/sguclient
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
 
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/sguclient $(1)/bin/
 	$(INSTALL_CONF) ./luci_files/root/etc/config/sguclient $(1)/etc/config/sguclient
 	$(INSTALL_BIN) ./luci_files/root/etc/init.d/sguclient $(1)/etc/init.d/sguclient
-	$(INSTALL_DATA) ./luci_files/root/usr/lib/lua/luci/model/cbi/sguclient.lua $(1)/usr/lib/lua/luci/model/cbi/sguclient.lua
+	$(INSTALL_DATA) ./luci_files/root/usr/lib/lua/luci/model/cbi/sguclient/log.lua $(1)/usr/lib/lua/luci/model/cbi/sguclient/log.lua
+	$(INSTALL_DATA) ./luci_files/root/usr/lib/lua/luci/model/cbi/sguclient/sguclient.lua $(1)/usr/lib/lua/luci/model/cbi/sguclient/sguclient.lua
 	$(INSTALL_DATA) ./luci_files/root/usr/lib/lua/luci/controller/sguclient.lua $(1)/usr/lib/lua/luci/controller/sguclient.lua
 	$(INSTALL_DATA) ./i18n/zh-cn/*.lmo $(1)/usr/lib/lua/luci/i18n/
 endef
