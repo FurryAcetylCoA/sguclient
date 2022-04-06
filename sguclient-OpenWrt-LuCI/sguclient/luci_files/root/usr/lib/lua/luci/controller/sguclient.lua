@@ -11,7 +11,7 @@ function index()
         entry({"admin", "network", "sguclient","client"}, cbi("sguclient/sguclient"), _("SGUClient LuCI"), 1)
 
 
-        entry({"admin", "network", "sguclient","Log"}, cbi("sguclient/log"), _("Log"), 2).leaf =true
+       
 end
 
 function act_reset()
