@@ -58,7 +58,6 @@ int           exit_flag = 0;
 int           auto_rec = 0;             /* 断线重拨 */
 int           timeout_alarm_1x = 1;
 int           reconnect_times = 0;      /* 超时重连次数 */
-int           first_boot = 1;
 
 /* #####   GLOBLE VAR DEFINITIONS   #########################
  *-----------------------------------------------------------------------------
@@ -395,13 +394,7 @@ void action_by_eap_type(enum EAPType pType,
             if( auto_rec )
             {
                fprintf(stdout, "&&Info: Authentication Failed, auto reconnect in a few sec...\n");
-               //模拟开机
-               if (first_boot==1){
-                   first_boot=2;
-                   auto_reconnect(3); //重连，传入睡眠时间
-               } else{
-                   system("/etc/init.d/sguclient restart");//用了一个蠢办法
-               }
+               auto_reconnect(3); //重连，传入睡眠时间
             } 
             else
             {
