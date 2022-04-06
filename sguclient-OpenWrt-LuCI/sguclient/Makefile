@@ -3,6 +3,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=sguclient
 PKG_VERSION:=0.20
 PKG_RELEASE:=r0.20-luci
+TARGET_CFLAGS += -std=gnu99
 
 PKG_BUILD_DIR:= $(BUILD_DIR)/$(PKG_NAME)
 
