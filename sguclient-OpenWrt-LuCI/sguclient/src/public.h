@@ -43,6 +43,10 @@ typedef unsigned int    uint32;
 
 #define DRCOM_DEBUG_ON 0    //Drcom认证部分的调试开关，置1时输出有关调试信息
 
+
+int needToSendDrComStart;
+int  dstatus;
+uint8 drcom_pkt_counter;
 int xstatus;  //802.1x状态
 struct sockaddr_ll sa_ll;
 struct ethhdr  eth_header;

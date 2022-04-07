@@ -37,7 +37,6 @@ define Package/sguclient/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/sguclient $(1)/bin/
 	$(INSTALL_CONF) ./luci_files/root/etc/config/sguclient $(1)/etc/config/sguclient
 	$(INSTALL_BIN) ./luci_files/root/etc/init.d/sguclient $(1)/etc/init.d/sguclient
-
 	$(INSTALL_DATA) ./luci_files/root/usr/lib/lua/luci/model/cbi/sguclient/log.lua $(1)/usr/lib/lua/luci/model/cbi/sguclient/log.lua
 	$(INSTALL_DATA) ./luci_files/root/usr/lib/lua/luci/model/cbi/sguclient/sguclient.lua $(1)/usr/lib/lua/luci/model/cbi/sguclient/sguclient.lua
 	$(INSTALL_DATA) ./luci_files/root/usr/lib/lua/luci/controller/sguclient.lua $(1)/usr/lib/lua/luci/controller/sguclient.lua
