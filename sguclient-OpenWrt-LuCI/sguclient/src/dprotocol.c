@@ -647,22 +647,7 @@ void init_env_d() {
  * =====================================================================================
  */
 void init_dial_env() {
-    /* linklayer broadcast address, used to connect the huawei's exchange */
-    //const char dev_dest[ETH_ALEN] = {0x01, 0x80, 0xc2, 0x00, 0x00, 0x03};
-    const char dev_dest[ETH_ALEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-
-
-    /* set struct sockaddr_ll for sendto function
-     sa_ll: global value, in "xprotocol.h" */
-    sa_ll.sll_family = PF_PACKET;
-    sa_ll.sll_protocol = htons(ETH_P_ALL);
-    sa_ll.sll_ifindex = if_nametoindex(interface_name);
-    sa_ll.sll_hatype = 0;
-    sa_ll.sll_pkttype = PACKET_HOST | PACKET_BROADCAST | PACKET_MULTICAST;
-    memcpy(sa_ll.sll_addr, dev_dest, ETH_ALEN);
-
-    sock = create_ethhdr_sock(&eth_header); // eth_header,sock: global value
-
+    
 }
 
 /*
