@@ -1,0 +1,53 @@
+#!/bin/sh /etc/rc.common
+START=99
+
+run_sguclient()
+{
+	local enable
+	config_get_bool enable $1 enable
+
+	if [ $enable ]; then
+		local autoreconnect
+		local username
+		local password
+		local isptype
+		local ifname
+		local wanip
+    local cmd
+
+		config_get_bool autoreconnect $1 autoreconnect
+		config_get_bool noheartbeat $1 noheartbeat
+		config_get username $1 username
+		config_get password $1 password
+		config_get isptype $1 isptype
+		config_get ifname $1 ifname
+		config_get wanip $1 wanip
+
+    if [ $autoreconnect ];then cmd=$cmd" --auto";fi
+    if [ $noheartbeat ];  then cmd=$cmd" --noheartbeat";fi
+
+		sguclient -u $username -p $password -i $isptype --device $ifname --ip $wanip  $cmd >/tmp/sguclient.log 2>&1 &
+		echo "SGUClient has started."
+
+	fi
+}
+
+start()
+{
+	config_load sguclient
+	config_foreach run_sguclient login
+}
+
+stop()
+{
+	killall sguclient
+	echo "SGUClient has stoped."
+}
+
+restart()
+{
+  killall sguclient
+  sleep 1
+  config_load sguclient
+  config_foreach run_sguclient login
+}
