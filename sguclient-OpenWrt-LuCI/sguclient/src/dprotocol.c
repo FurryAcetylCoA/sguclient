@@ -780,12 +780,11 @@ static void PackDump(const char* string,int len,char * comment){
 void* DrComServerDaemon(void *args)
 {
 	int ret;
+    strcpy(dstatusMsg, "please log on first");
 
     drcom_pkt_counter = 0;
 	dstatus = DOFFLINE;
-	strcpy(dstatusMsg, "please log on first");
-
-	int needToSendDrComStart = 1;
+	needToSendDrComStart = 1;
 
 	while(1)//todo:检查是否涵盖所有情况
 	{
@@ -800,9 +799,10 @@ void* DrComServerDaemon(void *args)
 			ret = SendU8GetChallenge();
 			if(ret != 0)
 			{
-				printf("DrCom: 初始数据包发送失败!\n");
+				printf("DrCom: Sending login request U8 failed!\n");
 				return NULL;
 			}
+            printf("DrCom: Sending login request U8!\n");
             needToSendDrComStart = 0;
             continue;
 		}
@@ -860,7 +860,7 @@ void* DrComServerDaemon(void *args)
                 DrInfo.U8Counter++;
                 if(ret != 0)
                 {
-                    printf("DrCom: 初始数据包发送失败!\n");
+                    printf("DrCom: Sending login request U8 failed!\n");
                     return NULL;
                 }
                 printf("Drcom: Done\n");
@@ -877,11 +877,9 @@ void* DrComServerDaemon(void *args)
                 printf("Drcom: U40 phase 1 error\n");
                 continue;
             }
-
         }
 
 	}
-
 	close(sock);
 	return NULL;
 }
