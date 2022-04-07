@@ -258,10 +258,6 @@ int SendU244Login() {
     strcat(UserNameBuffer, "LAPTOP-");
     memcpy(UserNameBuffer + sizeof("LAPTOP-"), my_mac, sizeof(my_mac));
     memcpy(pkt_data + data_index, UserNameBuffer, sizeof(UserNameBuffer));
-    memset(UserNameBuffer, 0, sizeof (UserNameBuffer));
-    strcat(UserNameBuffer,"LAPTOP-");
-    memcpy(UserNameBuffer+ sizeof("LAPTOP-"),local_mac,sizeof (local_mac));
-    memcpy(pkt_data +data_index ,UserNameBuffer, sizeof (UserNameBuffer));
 
     data_index += (32 - user_id_length);//用户名+设备名段总长为32
 
