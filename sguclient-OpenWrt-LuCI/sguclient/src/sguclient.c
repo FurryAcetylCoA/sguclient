@@ -21,74 +21,76 @@
 //#include <assert.h>
 
 #ifndef __linux
+
 static int bsd_get_mac(const char ifname[], uint8_t eth_addr[]);
+
 #endif
 
 /* #####   GLOBLE VAR DEFINITIONS   ######################### */
 /*-----------------------------------------------------------------------------
  *  程序的主控制变量
  *-----------------------------------------------------------------------------*/
-char        errbuf[PCAP_ERRBUF_SIZE];  /* error buffer */
-pcap_t      *handle;			   /* packet capture handle */
-uint8_t      muticast_mac[] =            /* 电信802.1x的认证服务器多播地址 */
-                        {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-                        //电信有些苑亦可用01-d0-f8-00-00-03
-                        //注意电信不可用01-80-c2-00-00-03(交换机不识别，收不到回应)
+char errbuf[PCAP_ERRBUF_SIZE];  /* error buffer */
+pcap_t *handle;               /* packet capture handle */
+uint8_t muticast_mac[] =            /* 电信802.1x的认证服务器多播地址 */
+        {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+//电信有些苑亦可用01-d0-f8-00-00-03
+//注意电信不可用01-80-c2-00-00-03(交换机不识别，收不到回应)
 
-uint8_t      muticast_mac_YD[] =         /* 移动802.1x的认证服务器多播地址 */
-                        {0x01, 0x80, 0xc2, 0x00, 0x00, 0x03};
-                        //注意：移动多播地址若改为0xff广播，会增强稳定性，
-                            //但紫竹苑将完全无法使用(交换机不识别，收不到回应)
+uint8_t muticast_mac_YD[] =         /* 移动802.1x的认证服务器多播地址 */
+        {0x01, 0x80, 0xc2, 0x00, 0x00, 0x03};
+//注意：移动多播地址若改为0xff广播，会增强稳定性，
+//但紫竹苑将完全无法使用(交换机不识别，收不到回应)
 
 
 /* #####   GLOBLE VAR DEFINITIONS   ###################
  *-----------------------------------------------------------------------------
  *  用户信息的赋值变量，由init_argument函数初始化
  *-----------------------------------------------------------------------------*/
-int          dhcp_on = 0;               /* DHCP 模式标记 */
-int          background = 0;            /* 后台运行标记  */
-char         isp_type='D';              /* 运营商类型，默认是电信（西区）  D电信 Y移动  */
-char         *dev = NULL;               /* 连接的设备名 */
-char         *username = NULL;
-char         *password = NULL;
-char         *user_gateway = NULL;      /* 由用户设定的四个报文参数 */
-char         *user_ip = NULL;
-char         *user_mask = NULL;
-int           exit_flag = 0;
-int           auto_rec = 0;             /* 断线重拨 */
-int           timeout_alarm_1x = 1;
-int           reconnect_times = 0;      /* 超时重连次数 */
+int dhcp_on = 0;               /* DHCP 模式标记 */
+int background = 0;            /* 后台运行标记  */
+char isp_type = 'D';              /* 运营商类型，默认是电信（西区）  D电信 Y移动  */
+char *dev = NULL;               /* 连接的设备名 */
+char *username = NULL;
+char *password = NULL;
+char *user_gateway = NULL;      /* 由用户设定的四个报文参数 */
+char *user_ip = NULL;
+char *user_mask = NULL;
+int exit_flag = 0;
+int auto_rec = 0;             /* 断线重拨 */
+int timeout_alarm_1x = 1;
+int reconnect_times = 0;      /* 超时重连次数 */
 
 /* #####   GLOBLE VAR DEFINITIONS   #########################
  *-----------------------------------------------------------------------------
  *  报文相关信息变量，由init_info 、init_device函数初始化。
  *-----------------------------------------------------------------------------*/
-char           dev_if_name[64];
-size_t         username_length;
-size_t         password_length;
-uint32_t       local_ip;			       /* 网卡IP，网络序，下同 */
-uint32_t       local_mask;			       /* subnet mask */
-uint32_t       local_gateway = -1;
-uint8_t        local_mac[ETHER_ADDR_LEN];  /* MAC地址 */
+char dev_if_name[64];
+size_t username_length;
+size_t password_length;
+uint32_t local_ip;                   /* 网卡IP，网络序，下同 */
+uint32_t local_mask;                   /* subnet mask */
+uint32_t local_gateway = -1;
+uint8_t local_mac[ETHER_ADDR_LEN];  /* MAC地址 */
 
 
 /* #####   TYPE DEFINITIONS   ######################### */
 /*-----------------------------------------------------------------------------
  *  报文缓冲区，由init_frame函数初始化。
  *-----------------------------------------------------------------------------*/
-u_char      eapol_start[96];            /* 电信EAPOL START报文 */
-u_char      eapol_logoff[96];           /* 电信EAPOL LogOff报文 */
-u_char      eapol_keepalive[96];
-u_char      eap_response_ident[96];     /* 电信EAP RESPON/IDENTITY报文 */
-u_char      eap_response_md5ch[96];     /* 电信EAP RESPON/MD5 报文 */
+u_char eapol_start[96];            /* 电信EAPOL START报文 */
+u_char eapol_logoff[96];           /* 电信EAPOL LogOff报文 */
+u_char eapol_keepalive[96];
+u_char eap_response_ident[96];     /* 电信EAP RESPON/IDENTITY报文 */
+u_char eap_response_md5ch[96];     /* 电信EAP RESPON/MD5 报文 */
 
-u_char      eapol_start_YD[60];         /* 移动EAPOL START报文 */
-u_char      eapol_logoff_YD[60];        /* 移动EAPOL LogOff报文 */
-u_char      eapol_keepalive_YD[60];
-u_char      eap_response_ident_YD[60];  /* 移动EAP RESPON/IDENTITY报文 */
-u_char      eap_response_md5ch_YD[60];  /* 移动EAP RESPON/MD5 报文 */
+u_char eapol_start_YD[60];         /* 移动EAPOL START报文 */
+u_char eapol_logoff_YD[60];        /* 移动EAPOL LogOff报文 */
+u_char eapol_keepalive_YD[60];
+u_char eap_response_ident_YD[60];  /* 移动EAP RESPON/IDENTITY报文 */
+u_char eap_response_md5ch_YD[60];  /* 移动EAP RESPON/MD5 报文 */
 
-uint8_t     global_id = 1;  //EAP/EAPOL数据包的ID号，不能改为0，否则无法认证
+uint8_t global_id = 1;  //EAP/EAPOL数据包的ID号，不能改为0，否则无法认证
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -98,18 +100,17 @@ uint8_t     global_id = 1;  //EAP/EAPOL数据包的ID号，不能改为0，否�
  *       Output:  无
  * =====================================================================================
  */
-void printNotification(const struct eap_header *eap_header)
-{
-    char *buf = (char *)eap_header;  //拷贝一份EAP/EAPOL数据包供打印
+void printNotification(const struct eap_header *eap_header) {
+    char *buf = (char *) eap_header;  //拷贝一份EAP/EAPOL数据包供打印
     int i = 0;
     printf("\033[40;31m&&Got notification: \033[1m");
     for (i = 0; i < 46; ++i)    //准备打印整个EAP/EAPOL数据包
     {
-        if ( (*buf >= 32) && (*buf <= 127) )  //printable
+        if ((*buf >= 32) && (*buf <= 127))  //printable
         {
             printf("%c", *buf);
         }
-        buf ++;
+        buf++;
     }
     printf("\033[40;31m\033[0m"); //end all special features
     printf("\n");
@@ -123,10 +124,9 @@ void printNotification(const struct eap_header *eap_header)
  *       Output:  返回产生的随机UDP端口号
  * =====================================================================================
  */
-unsigned int generateRandomPort()
-{
+unsigned int generateRandomPort() {
     unsigned int random;
-    srand((unsigned int)time(0));
+    srand((unsigned int) time(0));
     random = 10000 + rand() % 55535;
     return random;
 }
@@ -139,12 +139,11 @@ unsigned int generateRandomPort()
  *       Output:  无
  * =====================================================================================
  */
-void print_hex(uint8_t *array, int count)
-{
+void print_hex(uint8_t *array, int count) {
     int i;
-    for(i = 0; i < count; i++){
-        if ( !(i % 16))
-            printf ("\n");
+    for (i = 0; i < count; i++) {
+        if (!(i % 16))
+            printf("\n");
         printf("%02x ", array[i]);
     }
     printf("\n");
@@ -158,11 +157,9 @@ void print_hex(uint8_t *array, int count)
  *       Output:  无
  * =====================================================================================
  */
-void DrcomAuthenticationEntry()
-{
+void DrcomAuthenticationEntry() {
 
-    if (isp_type == 'D')
-    {
+    if (isp_type == 'D') {
 
         pthread_t dtid;  //drcom线程的pid
         int ret;
@@ -172,23 +169,20 @@ void DrcomAuthenticationEntry()
         passwd：drcom udp协议密码（同802.1x）
         interface_name：drcom udp协议认证使用的网卡设备名（同802.1x）
         */
-        strcpy(user_id,username);
-        strcpy(passwd,password);
-        strcpy(interface_name,dev);
+        strcpy(user_id, username);
+        strcpy(passwd, password);
+        strcpy(interface_name, dev);
 
         // init ip mac and socks
         init_dial_env();
         init_env_d();
 
         ret = pthread_create(&dtid, NULL, DrComServerDaemon, NULL);
-        if( 0 != ret)
-        {
+        if (0 != ret) {
             perror("Create Drcom Thread Failed!");
             exit(EXIT_FAILURE);
-        } 
-        else printf("Creat Drcom Thread Successfully.\n");
-    } 
-    else return;
+        } else printf("Creat Drcom Thread Successfully.\n");
+    } else return;
 }
 
 /*
@@ -199,10 +193,12 @@ void DrcomAuthenticationEntry()
  *       Output:  无
  * =====================================================================================
  */
-void auto_reconnect(int sleep_time_sec)
-{   //会有三种情况进入此处，一是timeout，二和三分别为移动与电信的EAP_Failure
+void auto_reconnect(int sleep_time_sec) {   //会有三种情况进入此处，一是timeout，二和三分别为移动与电信的EAP_Failure
     //重新初始化一些变量
     global_id = 1;
+    drcom_pkt_counter = 0;//初始化drcom计数器
+    dstatus = DOFFLINE;//舒适化u244包检测变量
+    needToSendDrComStart = 1;//初始化u8包检测变量
     sleep(sleep_time_sec);
     send_eap_packet(EAPOL_START);
 }
@@ -215,24 +211,20 @@ void auto_reconnect(int sleep_time_sec)
  *       Output:  无
  * =====================================================================================
  */
-void time_out_handler()
-{
+void time_out_handler() {
     printf("SGUClient wait package response time out! \nCheck your physical network connection!\n");
-    if ( reconnect_times >= 5 )  //重连次数超过5次
+    if (reconnect_times >= 5)  //重连次数超过5次
     {
         printf("SGUClient tried reconnect more than 5 times, but all failed.\n");
         printf("SGUClient exits now!\n");
         exit(EXIT_FAILURE);
     }
 
-    if ( auto_rec == 1 )
-    {
+    if (auto_rec == 1) {
         printf("Try auto reconnect in 5 secs...\n");
         reconnect_times++;
         auto_reconnect(5);
-    }
-    else 
-    {
+    } else {
         printf("Auto reconnection disabled by user,SGUClient exits now!\n");
         exit(EXIT_FAILURE);
     }
@@ -246,56 +238,55 @@ void time_out_handler()
  *       Output:  无
  * =====================================================================================
  */
-void show_usage()
-{
-    printf( "\n"
-            "SGUClient %s \n"
-            "\t  -- Supllicant for ShaoGuan University 802.1x Authentication.\n"
-            "\t  -- A client can be used on the whole campus.\n"
-            "\t     Drcom UDP protocol authentication included(Drcom 5.1.1 X,U62.R110908).\n"
-            "\n"
-            "  Usage:\n"
-            "\tRun under root privilege, usually by `sudo', with your \n"
-            "\taccount info in arguments:\n\n"
-            "\t-u, --username           802.1x username.\n"
-            "\t-p, --password           802.1x password.\n"
-            "\n"
-            "  Optional Arguments:\n\n"
-            "\t--auto                Enable auto reconnect. Default is disabled.\n"
-            "\t                      Generally NO NEEDED!\n\n"
-            "\t--device              Specify which device to use.\n"
-            "\t                      Default is usually eth0.\n\n"
+void show_usage() {
+    printf("\n"
+           "SGUClient %s \n"
+           "\t  -- Supllicant for ShaoGuan University 802.1x Authentication.\n"
+           "\t  -- A client can be used on the whole campus.\n"
+           "\t     Drcom UDP protocol authentication included(Drcom 5.1.1 X,U62.R110908).\n"
+           "\n"
+           "  Usage:\n"
+           "\tRun under root privilege, usually by `sudo', with your \n"
+           "\taccount info in arguments:\n\n"
+           "\t-u, --username           802.1x username.\n"
+           "\t-p, --password           802.1x password.\n"
+           "\n"
+           "  Optional Arguments:\n\n"
+           "\t--auto                Enable auto reconnect. Default is disabled.\n"
+           "\t                      Generally NO NEEDED!\n\n"
+           "\t--device              Specify which device to use.\n"
+           "\t                      Default is usually eth0.\n\n"
 
-            "\t--random              Use random UDP client port during Drcom authentication.\n"
-            "\t                      Sguclient will generate a random client port to replace 61440.\n"
-            "\t                      Only effect the client. Server port will not be affected.\n\n"
-            "\t--noheartbeat         Disable timeout alarm clock when waiting for next 802.1x package.\n"
-            "\t                      Timeout should be disabled if there is NO 802.1x heart beat package.\n\n"
+           "\t--random              Use random UDP client port during Drcom authentication.\n"
+           "\t                      Sguclient will generate a random client port to replace 61440.\n"
+           "\t                      Only effect the client. Server port will not be affected.\n\n"
+           "\t--noheartbeat         Disable timeout alarm clock when waiting for next 802.1x package.\n"
+           "\t                      Timeout should be disabled if there is NO 802.1x heart beat package.\n\n"
 
-            "\t--ip                  Specify your IPv4 address.\n"
-            "\t                      It only takes effect when sguclient can not correctly get IP address.\n\n"
+           "\t--ip                  Specify your IPv4 address.\n"
+           "\t                      It only takes effect when sguclient can not correctly get IP address.\n\n"
 
-            "\t-b, --background      Program fork to background after authentication.\n\n"
+           "\t-b, --background      Program fork to background after authentication.\n\n"
 
-            "\t-i, --isp_type        Specify your ISP type.\n"
-            "\t                      'D' for China Telecom(CTCC), 'Y' for China Mobile(CMCC).\n"
-            "\t                      Default is D (China Telecom).\n\n"
-            "\t-k                    Kill other running SGUClient instance.\n\n"
+           "\t-i, --isp_type        Specify your ISP type.\n"
+           "\t                      'D' for China Telecom(CTCC), 'Y' for China Mobile(CMCC).\n"
+           "\t                      Default is D (China Telecom).\n\n"
+           "\t-k                    Kill other running SGUClient instance.\n\n"
 
-            "\t-h, --help            Show this help.\n\n"
-            "\n"
-            "  About SGUClient:\n\n"
-            "\tThis program is a C implementation to ShaoGuan University 802.1x Authentication.\n"
-            "\tBased on other open-source 802.1x programs,SGUClient has simple goal of replacing \n"
-            "\tthe official clients with ONE client. \n\n"
-            "\tWarning: This program may not be used for commercial purposes.\n\n"
+           "\t-h, --help            Show this help.\n\n"
+           "\n"
+           "  About SGUClient:\n\n"
+           "\tThis program is a C implementation to ShaoGuan University 802.1x Authentication.\n"
+           "\tBased on other open-source 802.1x programs,SGUClient has simple goal of replacing \n"
+           "\tthe official clients with ONE client. \n\n"
+           "\tWarning: This program may not be used for commercial purposes.\n\n"
 
-            "\tSGUClient is a software developed individually, with NO any rela-\n"
-            "\tiontship with ShaoGuan University or any other company.\n\n\n"
+           "\tSGUClient is a software developed individually, with NO any rela-\n"
+           "\tiontship with ShaoGuan University or any other company.\n\n\n"
 
-            "\tBug Report? Please join our QQ group: 638138948\n"
-            "\t\t\t\t\t\t\t\t2015-09-13\n",
-            SGU_VER);
+           "\tBug Report? Please join our QQ group: 638138948\n"
+           "\t\t\t\t\t\t\t\t2015-09-13\n",
+           SGU_VER);
 }
 
 
@@ -305,15 +296,14 @@ void show_usage()
  *  Description:  calcuate for md5 digest
  * =====================================================================================
  */
-char* get_md5_digest(const char* str, size_t len)
-{
+char *get_md5_digest(const char *str, size_t len) {
     static md5_byte_t digest[16];
-	md5_state_t state;
-	md5_init(&state);
-	md5_append(&state, (const md5_byte_t *)str, len);
-	md5_finish(&state, digest);
+    md5_state_t state;
+    md5_init(&state);
+    md5_append(&state, (const md5_byte_t *) str, len);
+    md5_finish(&state, digest);
 
-    return (char*)digest;
+    return (char *) digest;
 }
 
 /*
@@ -324,18 +314,16 @@ char* get_md5_digest(const char* str, size_t len)
  *       Output:  无
  * =====================================================================================
  */
-enum EAPType get_eap_type(const struct eap_header *eap_header)
-{
-    switch (eap_header->eap_t)
-    {
+enum EAPType get_eap_type(const struct eap_header *eap_header) {
+    switch (eap_header->eap_t) {
         case 0x01:
-            if ( eap_header->eap_op == 0x01 )
+            if (eap_header->eap_op == 0x01)
                 return EAP_REQUEST_IDENTITY;
-            if ( eap_header->eap_op == 0x04 )
+            if (eap_header->eap_op == 0x04)
                 return EAP_REQUETS_MD5_CHALLENGE;
-            if ( eap_header->eap_op == 0xfa )
+            if (eap_header->eap_op == 0xfa)
                 return EAP_REQUEST_MD5_KEEP_ALIVE;
-            if ( eap_header->eap_op == 0x02 )  //802.1x Notification
+            if (eap_header->eap_op == 0x02)  //802.1x Notification
                 return EAP_NOTIFICATION;
             break;
 
@@ -347,12 +335,12 @@ enum EAPType get_eap_type(const struct eap_header *eap_header)
             return EAP_FAILURE;
     }
 
-    fprintf (stderr, "&&IMPORTANT: Unknown Package : eap_t:      %02x\n"
+    fprintf(stderr, "&&IMPORTANT: Unknown Package : eap_t:      %02x\n"
                     "                               eap_id: %02x\n"
                     "                               eap_op:     %02x\n",
-                    eap_header->eap_t, eap_header->eap_id,
-                    eap_header->eap_op);
-	exit(EXIT_FAILURE);
+            eap_header->eap_t, eap_header->eap_id,
+            eap_header->eap_op);
+    exit(EXIT_FAILURE);
     return ERROR;
 }
 
@@ -366,156 +354,141 @@ enum EAPType get_eap_type(const struct eap_header *eap_header)
 void action_by_eap_type(enum EAPType pType,
                         const struct eap_header *header,
                         const struct pcap_pkthdr *packetinfo,
-                        const uint8_t *packet) 
-{
-  if(isp_type=='D')                //电信部分
-  {
-    printf("<CTCC>Received PackType: %d\n", pType);
-    switch(pType)
+                        const uint8_t *packet) {
+    if (isp_type == 'D')                //电信部分
     {
-        case EAP_SUCCESS:
-            alarm(0);  //取消闹钟
-            xstatus=XONLINE;
-            fprintf(stdout, ">>Protocol: EAP_SUCCESS\n");
-            fprintf(stdout, "&&Info: 802.1x Authorized Access to Network. \n");
-            fprintf(stdout, "        Then please use PPPOE manually to connect to Internet. \n");
-            //print_server_info (packet, packetinfo->caplen);
-            if ( background )
-            {
-                background = 0;   /* 防止以后误触发 */
-                daemon_init();
-            }
-            break;
+        printf("<CTCC>Received PackType: %d\n", pType);
+        switch (pType) {
+            case EAP_SUCCESS:
+                alarm(0);  //取消闹钟
+                xstatus = XONLINE;
+                fprintf(stdout, ">>Protocol: EAP_SUCCESS\n");
+                fprintf(stdout, "&&Info: 802.1x Authorized Access to Network. \n");
+                fprintf(stdout, "        Then please use PPPOE manually to connect to Internet. \n");
+                //print_server_info (packet, packetinfo->caplen);
+                if (background) {
+                    background = 0;   /* 防止以后误触发 */
+                    daemon_init();
+                }
+                break;
 
-        case EAP_FAILURE:
-            alarm(0);  //取消闹钟
-            xstatus=XOFFLINE;
-            fprintf(stdout, ">>Protocol: EAP_FAILURE\n");
-            if( auto_rec )
-            {
-               fprintf(stdout, "&&Info: Authentication Failed, auto reconnect in a few sec...\n");
-                drcom_pkt_counter = 0;
-                dstatus = DOFFLINE;
-                needToSendDrComStart = 1;
-               auto_reconnect(3); //重连，传入睡眠时间
-            } 
-            else
-            {
-                fprintf(stdout, "&&Info: Authentication Failed!\n");
-                pcap_breakloop (handle);
-            }
-            break;
+            case EAP_FAILURE:
+                alarm(0);  //取消闹钟
+                xstatus = XOFFLINE;
+                fprintf(stdout, ">>Protocol: EAP_FAILURE\n");
+                if (auto_rec) {
+                    fprintf(stdout, "&&Info: Authentication Failed, auto reconnect in a few sec...\n");
+                    auto_reconnect(3); //重连，传入睡眠时间
+                } else {
+                    fprintf(stdout, "&&Info: Authentication Failed!\n");
+                    pcap_breakloop(handle);
+                }
+                break;
 
-        case EAP_REQUEST_IDENTITY:
-            alarm(0);  //取消闹钟
-            fprintf(stdout, ">>Protocol: REQUEST EAP-Identity\n");
-            fprintf(stdout, "DEBUGER@@ current id:%d\n",header->eap_id);
-            global_id=header->eap_id;
-            init_frames();
-            send_eap_packet(EAP_RESPONSE_IDENTITY);
-            break;
+            case EAP_REQUEST_IDENTITY:
+                alarm(0);  //取消闹钟
+                fprintf(stdout, ">>Protocol: REQUEST EAP-Identity\n");
+                fprintf(stdout, "DEBUGER@@ current id:%d\n", header->eap_id);
+                global_id = header->eap_id;
+                init_frames();
+                send_eap_packet(EAP_RESPONSE_IDENTITY);
+                break;
 
-        case EAP_REQUETS_MD5_CHALLENGE:
-            alarm(0);  //取消闹钟
-            fprintf(stdout, ">>Protocol: REQUEST MD5-Challenge(PASSWORD)\n");
-            fprintf(stdout, "DEBUGER@@ current id:%d\n",header->eap_id);
-            global_id=header->eap_id;
-            init_frames();
-            fill_password_md5( (uint8_t*)header->eap_md5_challenge, header->eap_id );
-            send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
-            break;
+            case EAP_REQUETS_MD5_CHALLENGE:
+                alarm(0);  //取消闹钟
+                fprintf(stdout, ">>Protocol: REQUEST MD5-Challenge(PASSWORD)\n");
+                fprintf(stdout, "DEBUGER@@ current id:%d\n", header->eap_id);
+                global_id = header->eap_id;
+                init_frames();
+                fill_password_md5((uint8_t *) header->eap_md5_challenge, header->eap_id);
+                send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
+                break;
 
-        case EAP_REQUEST_IDENTITY_KEEP_ALIVE:
-            alarm(0);  //取消闹钟
-            fprintf(stdout, ">>Protocol: REQUEST EAP_REQUEST_IDENTITY_KEEP_ALIVE\n");
-            fprintf(stdout, "DEBUGER@@ current id:%d\n",header->eap_id);
-            global_id=header->eap_id;
-            init_frames();
-            send_eap_packet(EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
-            break;
+            case EAP_REQUEST_IDENTITY_KEEP_ALIVE:
+                alarm(0);  //取消闹钟
+                fprintf(stdout, ">>Protocol: REQUEST EAP_REQUEST_IDENTITY_KEEP_ALIVE\n");
+                fprintf(stdout, "DEBUGER@@ current id:%d\n", header->eap_id);
+                global_id = header->eap_id;
+                init_frames();
+                send_eap_packet(EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
+                break;
 
-        case EAP_REQUEST_MD5_KEEP_ALIVE:
-            break;
+            case EAP_REQUEST_MD5_KEEP_ALIVE:
+                break;
 
-        case EAP_NOTIFICATION:
-            printNotification(header);
-            exit(EXIT_FAILURE);
-            break;
-        default:
-            return;
-    }
-  } 
-
-else if(isp_type=='Y')               //移动部分
-{
-    printf("<CMCC>Received PackType: %d\n", pType);
-    switch(pType)
+            case EAP_NOTIFICATION:
+                printNotification(header);
+                exit(EXIT_FAILURE);
+                break;
+            default:
+                return;
+        }
+    } else if (isp_type == 'Y')               //移动部分
     {
-        case EAP_SUCCESS:
-            alarm(0);  //取消闹钟
-            fprintf(stdout, ">>Protocol: EAP_SUCCESS\n");
-            fprintf(stdout, "&&Info: 802.1x Authorized Access to Network. \n");
-            fprintf(stdout, "        Then please use PPPOE manually to connect to Internet. \n");
-            if (background)
-            {
-                background = 0;   /* 防止以后误触发 */
-                daemon_init ();   /* fork至后台，主程序退出 */
-            }
-            break;
+        printf("<CMCC>Received PackType: %d\n", pType);
+        switch (pType) {
+            case EAP_SUCCESS:
+                alarm(0);  //取消闹钟
+                fprintf(stdout, ">>Protocol: EAP_SUCCESS\n");
+                fprintf(stdout, "&&Info: 802.1x Authorized Access to Network. \n");
+                fprintf(stdout, "        Then please use PPPOE manually to connect to Internet. \n");
+                if (background) {
+                    background = 0;   /* 防止以后误触发 */
+                    daemon_init();   /* fork至后台，主程序退出 */
+                }
+                break;
 
-        case EAP_FAILURE:
-            alarm(0);  //取消闹钟
-            fprintf(stdout, ">>Protocol: EAP_FAILURE\n");
-            if(auto_rec)
-            {
-               fprintf(stdout, "&&Info: Authentication Failed, auto reconnect in a few sec...\n");
-               auto_reconnect(1); //重连，传入睡眠时间
-            } else
-            {
-                fprintf(stdout, "&&Info: Authentication Failed!\n");
-                pcap_breakloop (handle);
-            }
-            break;
+            case EAP_FAILURE:
+                alarm(0);  //取消闹钟
+                fprintf(stdout, ">>Protocol: EAP_FAILURE\n");
+                if (auto_rec) {
+                    fprintf(stdout, "&&Info: Authentication Failed, auto reconnect in a few sec...\n");
+                    auto_reconnect(1); //重连，传入睡眠时间
+                } else {
+                    fprintf(stdout, "&&Info: Authentication Failed!\n");
+                    pcap_breakloop(handle);
+                }
+                break;
 
-        case EAP_REQUEST_IDENTITY:
-            alarm(0);  //取消闹钟
-            fprintf(stdout, ">>Protocol: REQUEST EAP-Identity\n");
-            fprintf(stdout, "DEBUGER@@ current id:%d\n",header->eap_id);
-            memset(eap_response_ident_YD + 14 + 5, header->eap_id, 1);
-            send_eap_packet(EAP_RESPONSE_IDENTITY);
-            break;
+            case EAP_REQUEST_IDENTITY:
+                alarm(0);  //取消闹钟
+                fprintf(stdout, ">>Protocol: REQUEST EAP-Identity\n");
+                fprintf(stdout, "DEBUGER@@ current id:%d\n", header->eap_id);
+                memset(eap_response_ident_YD + 14 + 5, header->eap_id, 1);
+                send_eap_packet(EAP_RESPONSE_IDENTITY);
+                break;
 
-        case EAP_REQUETS_MD5_CHALLENGE:
-            alarm(0);  //取消闹钟
-            fprintf(stdout, ">>Protocol: REQUEST MD5-Challenge(PASSWORD)\n");
-            fprintf(stdout, "DEBUGER@@ current id:%d\n",header->eap_id);
-            fill_password_md5((uint8_t*)header->eap_md5_challenge, header->eap_id);
-            memset(eap_response_md5ch_YD + 14 + 5, header->eap_id, 1);
-            send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
-            break;
+            case EAP_REQUETS_MD5_CHALLENGE:
+                alarm(0);  //取消闹钟
+                fprintf(stdout, ">>Protocol: REQUEST MD5-Challenge(PASSWORD)\n");
+                fprintf(stdout, "DEBUGER@@ current id:%d\n", header->eap_id);
+                fill_password_md5((uint8_t *) header->eap_md5_challenge, header->eap_id);
+                memset(eap_response_md5ch_YD + 14 + 5, header->eap_id, 1);
+                send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
+                break;
 
-        case EAP_REQUEST_IDENTITY_KEEP_ALIVE:
-            alarm(0);  //取消闹钟
-            fprintf(stdout, ">>Protocol: REQUEST EAP_REQUEST_IDENTITY_KEEP_ALIVE\n");
-            fprintf(stdout, "DEBUGER@@ current id:%d\n",header->eap_id);
-            global_id=header->eap_id;
-            init_frames();
-            memset(eapol_keepalive_YD + 14 + 5, header->eap_id, 1);
-            send_eap_packet(EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
-            break;
+            case EAP_REQUEST_IDENTITY_KEEP_ALIVE:
+                alarm(0);  //取消闹钟
+                fprintf(stdout, ">>Protocol: REQUEST EAP_REQUEST_IDENTITY_KEEP_ALIVE\n");
+                fprintf(stdout, "DEBUGER@@ current id:%d\n", header->eap_id);
+                global_id = header->eap_id;
+                init_frames();
+                memset(eapol_keepalive_YD + 14 + 5, header->eap_id, 1);
+                send_eap_packet(EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
+                break;
 
-        case EAP_REQUEST_MD5_KEEP_ALIVE:
-            break;
+            case EAP_REQUEST_MD5_KEEP_ALIVE:
+                break;
 
-        case EAP_NOTIFICATION:
-            printNotification(header);
-            exit(EXIT_FAILURE);
-            break;
+            case EAP_NOTIFICATION:
+                printNotification(header);
+                exit(EXIT_FAILURE);
+                break;
 
-        default:
-            return;
-    }
-  } else fprintf(stdout, "Unknown ISP Type!\n");
+            default:
+                return;
+        }
+    } else fprintf(stdout, "Unknown ISP Type!\n");
 }
 
 /*
@@ -524,188 +497,167 @@ else if(isp_type=='Y')               //移动部分
  *  Description:  根据eap类型发送相应数据包
  * =====================================================================================
  */
-void send_eap_packet(enum EAPType send_type)
-{
+void send_eap_packet(enum EAPType send_type) {
     uint8_t *frame_data;
-    int     frame_length = 0;
-    int     i = 0;
-    switch(send_type)
-    {
-        case EAPOL_START:
-            {
-                switch(isp_type)
-                {
-                    case 'D':
-                          //电信Start发包部分
-                          frame_data= eapol_start;
-                          frame_length = sizeof(eapol_start);
-                          for (i = 0; i < 2; i++)  //模仿官方客户端，认证前发送2次logoff包
-                          {
-                            fprintf(stdout, ">>Protocol: <CTCC>SEND EAPOL-Logoff Twice for CTCC 802.1x Protocol.\n");
-                            if ( pcap_sendpacket(handle, eapol_logoff, sizeof(eapol_logoff)) != 0 )
-                            {
-                                fprintf(stderr,"&&IMPORTANT: Error Sending the packet: %s\n", pcap_geterr(handle));
-                                return;
-                            }
-                          }
+    int frame_length = 0;
+    int i = 0;
+    switch (send_type) {
+        case EAPOL_START: {
+            switch (isp_type) {
+                case 'D':
+                    //电信Start发包部分
+                    frame_data = eapol_start;
+                    frame_length = sizeof(eapol_start);
+                    for (i = 0; i < 2; i++)  //模仿官方客户端，认证前发送2次logoff包
+                    {
+                        fprintf(stdout, ">>Protocol: <CTCC>SEND EAPOL-Logoff Twice for CTCC 802.1x Protocol.\n");
+                        if (pcap_sendpacket(handle, eapol_logoff, sizeof(eapol_logoff)) != 0) {
+                            fprintf(stderr, "&&IMPORTANT: Error Sending the packet: %s\n", pcap_geterr(handle));
+                            return;
+                        }
+                    }
 
-                          alarm(WAIT_START_TIME_OUT);  //等待回应
-                          fprintf(stdout, ">>Protocol: <CTCC>SEND EAPOL-Start\n");
-                          break;
+                    alarm(WAIT_START_TIME_OUT);  //等待回应
+                    fprintf(stdout, ">>Protocol: <CTCC>SEND EAPOL-Start\n");
+                    break;
 
-                    case 'Y':
-                          //移动Start发包部分
-                          frame_data= eapol_start_YD;
-                          frame_length = sizeof(eapol_start_YD);
-                          alarm(WAIT_START_TIME_OUT);  //等待回应
-                          fprintf(stdout, ">>Protocol: <CMCC>SEND EAPOL-Start\n");
-                          break;
+                case 'Y':
+                    //移动Start发包部分
+                    frame_data = eapol_start_YD;
+                    frame_length = sizeof(eapol_start_YD);
+                    alarm(WAIT_START_TIME_OUT);  //等待回应
+                    fprintf(stdout, ">>Protocol: <CMCC>SEND EAPOL-Start\n");
+                    break;
 
-                    default:fprintf(stdout, "Unknown ISP Type!\n");
-                }
+                default:
+                    fprintf(stdout, "Unknown ISP Type!\n");
             }
+        }
             break;
 
-        case EAPOL_LOGOFF:
-            {
-                switch(isp_type)
-                {
-                    case 'D':
-                          //电信Logoff发包部分
-                          frame_data = eapol_logoff;
-                          frame_length = sizeof(eapol_logoff);
-                          fprintf(stdout, ">>Protocol: <CTCC>SEND EAPOL-Logoff\n");
-                          break;
+        case EAPOL_LOGOFF: {
+            switch (isp_type) {
+                case 'D':
+                    //电信Logoff发包部分
+                    frame_data = eapol_logoff;
+                    frame_length = sizeof(eapol_logoff);
+                    fprintf(stdout, ">>Protocol: <CTCC>SEND EAPOL-Logoff\n");
+                    break;
 
-                    case 'Y':
-                          //移动Logoff发包部分
-                          frame_data = eapol_logoff_YD;
-                          frame_length = sizeof(eapol_logoff_YD);
-                          fprintf(stdout, ">>Protocol: <CMCC>SEND EAPOL-Logoff\n");
-                          break;
+                case 'Y':
+                    //移动Logoff发包部分
+                    frame_data = eapol_logoff_YD;
+                    frame_length = sizeof(eapol_logoff_YD);
+                    fprintf(stdout, ">>Protocol: <CMCC>SEND EAPOL-Logoff\n");
+                    break;
 
-                    default:fprintf(stdout, "Unknown ISP Type!\n");
-                }
+                default:
+                    fprintf(stdout, "Unknown ISP Type!\n");
             }
+        }
             break;
 
-        case EAP_RESPONSE_IDENTITY:
-            {
-                switch(isp_type)
-                {
-                    case 'D':
-                          //电信response/identity发包部分
-                          frame_data = eap_response_ident;
-                          frame_length=96;
-                          if (0 == timeout_alarm_1x)
-                          {
-                            alarm(0);
-                          }
-                          else{
-                            alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
-                          }
-                          fprintf(stdout, ">>Protocol: <CTCC>SEND EAP-Response/Identity\n");
-                          break;
+        case EAP_RESPONSE_IDENTITY: {
+            switch (isp_type) {
+                case 'D':
+                    //电信response/identity发包部分
+                    frame_data = eap_response_ident;
+                    frame_length = 96;
+                    if (0 == timeout_alarm_1x) {
+                        alarm(0);
+                    } else {
+                        alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
+                    }
+                    fprintf(stdout, ">>Protocol: <CTCC>SEND EAP-Response/Identity\n");
+                    break;
 
-                    case 'Y':
-                          //移动response/identity发包部分
-                          frame_data = eap_response_ident_YD;
-                          frame_length = 60;
-                          if (0 == timeout_alarm_1x)
-                          {
-                            alarm(0);
-                          }
-                          else{
-                            alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
-                          }
-                          fprintf(stdout, ">>Protocol: <CMCC>SEND EAP-Response/Identity\n");
-                          break;
+                case 'Y':
+                    //移动response/identity发包部分
+                    frame_data = eap_response_ident_YD;
+                    frame_length = 60;
+                    if (0 == timeout_alarm_1x) {
+                        alarm(0);
+                    } else {
+                        alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
+                    }
+                    fprintf(stdout, ">>Protocol: <CMCC>SEND EAP-Response/Identity\n");
+                    break;
 
-                          default:fprintf(stdout, "Unknown ISP Type!\n");
-                }
+                default:
+                    fprintf(stdout, "Unknown ISP Type!\n");
             }
+        }
             break;
 
-        case EAP_RESPONSE_MD5_CHALLENGE:
-            {
-                switch(isp_type)
-                {
-                    case 'D':
-                          //电信response/md5_challenge发包部分
-                          frame_data = eap_response_md5ch;
-                          frame_length = 96;
-                          if (0 == timeout_alarm_1x)
-                          {
-                            alarm(0);
-                          }
-                          else{
-                            alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
-                          }
-                          fprintf(stdout, ">>Protocol: <CTCC>SEND EAP-Response/Md5-Challenge\n");
-                          break;
-                    case 'Y':
-                          //移动response/md5_challenge发包部分
-                          frame_data = eap_response_md5ch_YD;
-                          frame_length = 60;
-                          if (0 == timeout_alarm_1x)
-                          {
-                            alarm(0);
-                          }
-                          else{
-                            alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
-                          }
-                          fprintf(stdout, ">>Protocol: <CMCC>SEND EAP-Response/Md5-Challenge\n");
-                          break;
-                    default:fprintf(stdout, "Unknown ISP Type!\n");
-                }
+        case EAP_RESPONSE_MD5_CHALLENGE: {
+            switch (isp_type) {
+                case 'D':
+                    //电信response/md5_challenge发包部分
+                    frame_data = eap_response_md5ch;
+                    frame_length = 96;
+                    if (0 == timeout_alarm_1x) {
+                        alarm(0);
+                    } else {
+                        alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
+                    }
+                    fprintf(stdout, ">>Protocol: <CTCC>SEND EAP-Response/Md5-Challenge\n");
+                    break;
+                case 'Y':
+                    //移动response/md5_challenge发包部分
+                    frame_data = eap_response_md5ch_YD;
+                    frame_length = 60;
+                    if (0 == timeout_alarm_1x) {
+                        alarm(0);
+                    } else {
+                        alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
+                    }
+                    fprintf(stdout, ">>Protocol: <CMCC>SEND EAP-Response/Md5-Challenge\n");
+                    break;
+                default:
+                    fprintf(stdout, "Unknown ISP Type!\n");
             }
+        }
             break;
 
-        case EAP_RESPONSE_IDENTITY_KEEP_ALIVE:
-            {
-                switch(isp_type)
-                {
-                    case 'D':
-                          //电信response_identity_keep_alive发包部分
-                          frame_data = eapol_keepalive;
-                          frame_length = 96;
-                          if (0 == timeout_alarm_1x)
-                          {
-                            alarm(0);
-                          }
-                          else{
-                            alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
-                          }
-                          fprintf(stdout, ">>Protocol: <CTCC>SEND EAP_RESPONSE_IDENTITY_KEEP_ALIVE\n");
-                          break;
-                    case 'Y':
-                          //移动response_identity_keep_alive发包部分
-                          frame_data = eapol_keepalive_YD;
-                          frame_length = 60;
-                          if (0 == timeout_alarm_1x)
-                          {
-                            alarm(0);
-                          }
-                          else{
-                            alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
-                          }
-                          fprintf(stdout, ">>Protocol: <CMCC>SEND EAP_RESPONSE_IDENTITY_KEEP_ALIVE\n");
-                          break;
-                    default:fprintf(stdout, "Unknown ISP Type!\n");
-                }
+        case EAP_RESPONSE_IDENTITY_KEEP_ALIVE: {
+            switch (isp_type) {
+                case 'D':
+                    //电信response_identity_keep_alive发包部分
+                    frame_data = eapol_keepalive;
+                    frame_length = 96;
+                    if (0 == timeout_alarm_1x) {
+                        alarm(0);
+                    } else {
+                        alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
+                    }
+                    fprintf(stdout, ">>Protocol: <CTCC>SEND EAP_RESPONSE_IDENTITY_KEEP_ALIVE\n");
+                    break;
+                case 'Y':
+                    //移动response_identity_keep_alive发包部分
+                    frame_data = eapol_keepalive_YD;
+                    frame_length = 60;
+                    if (0 == timeout_alarm_1x) {
+                        alarm(0);
+                    } else {
+                        alarm(WAIT_RESPONSE_TIME_OUT);  //等待回应
+                    }
+                    fprintf(stdout, ">>Protocol: <CMCC>SEND EAP_RESPONSE_IDENTITY_KEEP_ALIVE\n");
+                    break;
+                default:
+                    fprintf(stdout, "Unknown ISP Type!\n");
             }
+        }
             break;
         case EAP_REQUEST_MD5_KEEP_ALIVE:  //useless
             break;
 
         default:
-            fprintf(stderr,"&&IMPORTANT: Wrong Send Request Type.%02x\n", send_type);
+            fprintf(stderr, "&&IMPORTANT: Wrong Send Request Type.%02x\n", send_type);
             return;
     }
 
-    if (pcap_sendpacket(handle, frame_data, frame_length) != 0)
-    {
-        fprintf(stderr,"&&IMPORTANT: Error Sending the packet: %s\n", pcap_geterr(handle));
+    if (pcap_sendpacket(handle, frame_data, frame_length) != 0) {
+        fprintf(stderr, "&&IMPORTANT: Error Sending the packet: %s\n", pcap_geterr(handle));
         return;
     }
 }
@@ -718,14 +670,13 @@ void send_eap_packet(enum EAPType send_type)
  * =====================================================================================
  */
 void get_packet(uint8_t *args, const struct pcap_pkthdr *header,
-    const uint8_t *packet)
-{
-	/* declare pointers to packet headers */
-	const struct ether_header *ethernet;  /* The ethernet header [1] */
+                const uint8_t *packet) {
+    /* declare pointers to packet headers */
+    const struct ether_header *ethernet;  /* The ethernet header [1] */
     const struct eap_header *eap_header;
 
-    ethernet = (struct ether_header*)(packet);
-    eap_header = (struct eap_header *)(packet + SIZE_ETHERNET);
+    ethernet = (struct ether_header *) (packet);
+    eap_header = (struct eap_header *) (packet + SIZE_ETHERNET);
 
     enum EAPType p_type = get_eap_type(eap_header);
     action_by_eap_type(p_type, eap_header, header, packet);
@@ -739,164 +690,160 @@ void get_packet(uint8_t *args, const struct pcap_pkthdr *header,
  *  Description:  初始化发送帧的数据
  * =====================================================================================
  */
-void init_frames()
-{
-  if ( isp_type == 'D' )   //电信部分
-  {
-    int data_index;
+void init_frames() {
+    if (isp_type == 'D')   //电信部分
+    {
+        int data_index;
 
-    const u_char talier_eap_resp[] = {0x00, 0x44, 0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};  
-                                    //talier_eap_resp后4位用来填充IP(如果这里IP填入0.0.0.0的话可破IP绑定)
-    memcpy ( (void *)talier_eap_resp + 5, (const void *)&local_ip, 4);       //往response identity里填充IP
+        const u_char talier_eap_resp[] = {0x00, 0x44, 0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+        //talier_eap_resp后4位用来填充IP(如果这里IP填入0.0.0.0的话可破IP绑定)
+        memcpy((void *) talier_eap_resp + 5, (const void *) &local_ip, 4);       //往response identity里填充IP
 
-    const u_char talier_eap_md5_resp[] = {0x00, 0x44, 0x61, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00}; 
-                                    //talier_eap_md5_resp后4位用来填充IP(如果这里IP填入0.0.0.0的话可破IP绑定)
-    memcpy ( (void *)talier_eap_md5_resp + 5, (const void *)&local_ip, 4);   //往response identity里填充IP
+        const u_char talier_eap_md5_resp[] = {0x00, 0x44, 0x61, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00};
+        //talier_eap_md5_resp后4位用来填充IP(如果这里IP填入0.0.0.0的话可破IP绑定)
+        memcpy((void *) talier_eap_md5_resp + 5, (const void *) &local_ip, 4);   //往response identity里填充IP
 
-    /*****  EAPOL Header  *******/
-    u_char eapol_header[SIZE_ETHERNET];
-    data_index = 0;
-    u_short eapol_t = htons (0x888e);
-    memcpy ( eapol_header + data_index, muticast_mac, 6 ); /* dst addr. muticast */
-    data_index += 6;
-    memcpy ( eapol_header + data_index, local_mac, 6 );    /* src addr. local mac */
-    data_index += 6;
-    memcpy ( eapol_header + data_index, &eapol_t, 2 );    /*  frame type, 0x888e*/
+        /*****  EAPOL Header  *******/
+        u_char eapol_header[SIZE_ETHERNET];
+        data_index = 0;
+        u_short eapol_t = htons(0x888e);
+        memcpy(eapol_header + data_index, muticast_mac, 6); /* dst addr. muticast */
+        data_index += 6;
+        memcpy(eapol_header + data_index, local_mac, 6);    /* src addr. local mac */
+        data_index += 6;
+        memcpy(eapol_header + data_index, &eapol_t, 2);    /*  frame type, 0x888e*/
 
-    /**** EAPol START ****/
-    u_char start_data[] = { 0x01, 0x01, 0x00, 0x00 };
-    memset (eapol_start, 0x00, 96 );
-    memcpy (eapol_start, eapol_header, 14);
-    memcpy (eapol_start + 14, start_data, 4);
-    memset (eapol_start + 42, 0x01, 1 );
-    memset (eapol_start + 43, 0x01, 1 );
+        /**** EAPol START ****/
+        u_char start_data[] = {0x01, 0x01, 0x00, 0x00};
+        memset(eapol_start, 0x00, 96);
+        memcpy(eapol_start, eapol_header, 14);
+        memcpy(eapol_start + 14, start_data, 4);
+        memset(eapol_start + 42, 0x01, 1);
+        memset(eapol_start + 43, 0x01, 1);
 
-    /****EAPol LOGOFF ****/
-    u_char logoff_data[4] = {0x01, 0x02, 0x00, 0x00};
-    memset (eapol_logoff, 0x00, 96);
-    memcpy (eapol_logoff, eapol_header, 14);
-    memcpy (eapol_logoff + 14, logoff_data, 4);
+        /****EAPol LOGOFF ****/
+        u_char logoff_data[4] = {0x01, 0x02, 0x00, 0x00};
+        memset(eapol_logoff, 0x00, 96);
+        memcpy(eapol_logoff, eapol_header, 14);
+        memcpy(eapol_logoff + 14, logoff_data, 4);
 
-    /****EAPol Keep alive ****/ 
-    u_char keep_data[4] = { 0x01, 0x00, 0x00, 0x19 };
-    u_char temp_data_keepalive[5] = { 0x02, global_id, 0x00, 0x19,0x01 };
-    u_char temp_888e_in_keepalive[2] = { 0x88, 0x8e };
-    memset (eapol_keepalive, 0x00, 96);
-    memcpy (eapol_keepalive, muticast_mac, 6);
-    memcpy (eapol_keepalive + 6, local_mac, 6);
-    memcpy (eapol_keepalive + 12, temp_888e_in_keepalive, 2);
-    memcpy (eapol_keepalive + 14, keep_data, 4 );
-    memcpy (eapol_keepalive + 18, temp_data_keepalive, 5);
-    memcpy (eapol_keepalive + 23, username, username_length );
-    memcpy (eapol_keepalive + 23 + username_length, talier_eap_resp, 9);
+        /****EAPol Keep alive ****/
+        u_char keep_data[4] = {0x01, 0x00, 0x00, 0x19};
+        u_char temp_data_keepalive[5] = {0x02, global_id, 0x00, 0x19, 0x01};
+        u_char temp_888e_in_keepalive[2] = {0x88, 0x8e};
+        memset(eapol_keepalive, 0x00, 96);
+        memcpy(eapol_keepalive, muticast_mac, 6);
+        memcpy(eapol_keepalive + 6, local_mac, 6);
+        memcpy(eapol_keepalive + 12, temp_888e_in_keepalive, 2);
+        memcpy(eapol_keepalive + 14, keep_data, 4);
+        memcpy(eapol_keepalive + 18, temp_data_keepalive, 5);
+        memcpy(eapol_keepalive + 23, username, username_length);
+        memcpy(eapol_keepalive + 23 + username_length, talier_eap_resp, 9);
 
-    /* EAP RESPONSE IDENTITY */
-    u_char keep_data_response_ident[4] = {0x01, 0x00, 0x00, 0x19};
-    u_char temp_data_response_ident[5] = {0x02, global_id, 0x00, 0x19,0x01};
-    memset (eap_response_ident, 0x00, 96);
-    memcpy (eap_response_ident, eapol_header, 14);
-    memcpy (eap_response_ident + 14, keep_data_response_ident, 4);
-    memcpy (eap_response_ident + 18, temp_data_response_ident, 5);
-    memcpy (eap_response_ident + 23, username, username_length);
-    memcpy (eap_response_ident + 23 + username_length, talier_eap_resp, 9);
+        /* EAP RESPONSE IDENTITY */
+        u_char keep_data_response_ident[4] = {0x01, 0x00, 0x00, 0x19};
+        u_char temp_data_response_ident[5] = {0x02, global_id, 0x00, 0x19, 0x01};
+        memset(eap_response_ident, 0x00, 96);
+        memcpy(eap_response_ident, eapol_header, 14);
+        memcpy(eap_response_ident + 14, keep_data_response_ident, 4);
+        memcpy(eap_response_ident + 18, temp_data_response_ident, 5);
+        memcpy(eap_response_ident + 23, username, username_length);
+        memcpy(eap_response_ident + 23 + username_length, talier_eap_resp, 9);
 
-    /** EAP RESPONSE MD5 Challenge **/
-    u_char eap_resp_md5_head[10] = {0x01, 0x00, 
-                                   0x00, 31 + username_length, /* eapol-length */
-                                   0x02, 
-                                   global_id, /* id to be set */
-                                   0x00, 31 + username_length, /* eap-length */
-                                   0x04, 0x10};
-    memset(eap_response_md5ch, 0x00, 14 + 4 + 6 + 16 + username_length + 14);
+        /** EAP RESPONSE MD5 Challenge **/
+        u_char eap_resp_md5_head[10] = {0x01, 0x00,
+                                        0x00, 31 + username_length, /* eapol-length */
+                                        0x02,
+                                        global_id, /* id to be set */
+                                        0x00, 31 + username_length, /* eap-length */
+                                        0x04, 0x10};
+        memset(eap_response_md5ch, 0x00, 14 + 4 + 6 + 16 + username_length + 14);
 
-    data_index = 0;
-    memcpy (eap_response_md5ch + data_index, eapol_header, 14);
-    data_index += 14;
-    memcpy (eap_response_md5ch + data_index, eap_resp_md5_head, 10);
-    data_index += 26; // 剩余16位在收到REQ/MD5报文后由fill_password_md5填充 
-    memcpy (eap_response_md5ch + data_index, username, username_length);
-    data_index += username_length;
-    memcpy (eap_response_md5ch + data_index, talier_eap_md5_resp, 9);
-  }  
+        data_index = 0;
+        memcpy(eap_response_md5ch + data_index, eapol_header, 14);
+        data_index += 14;
+        memcpy(eap_response_md5ch + data_index, eap_resp_md5_head, 10);
+        data_index += 26; // 剩余16位在收到REQ/MD5报文后由fill_password_md5填充
+        memcpy(eap_response_md5ch + data_index, username, username_length);
+        data_index += username_length;
+        memcpy(eap_response_md5ch + data_index, talier_eap_md5_resp, 9);
+    } else if (isp_type == 'Y')   //移动部分
+    {
 
-  else if(isp_type == 'Y')   //移动部分
-  {
+        int data_index;
 
-    int data_index;
+        u_char eapol_header_YD[SIZE_ETHERNET];
+        data_index = 0;
+        u_short eapol_t = htons(0x888e);
+        memcpy(eapol_header_YD + data_index, muticast_mac_YD, 6); /* dst addr. muticast */
+        data_index += 6;
+        memcpy(eapol_header_YD + data_index, local_mac, 6);    /* src addr. local mac */
+        data_index += 6;
+        memcpy(eapol_header_YD + data_index, &eapol_t, 2);    /*  frame type, 0x888e*/
 
-    u_char eapol_header_YD[SIZE_ETHERNET];
-    data_index = 0;
-    u_short eapol_t = htons (0x888e);
-    memcpy (eapol_header_YD + data_index, muticast_mac_YD, 6); /* dst addr. muticast */
-    data_index += 6;
-    memcpy (eapol_header_YD + data_index, local_mac, 6);    /* src addr. local mac */
-    data_index += 6;
-    memcpy (eapol_header_YD + data_index, &eapol_t, 2);    /*  frame type, 0x888e*/
+        /**** EAPol START ****/
+        u_char start_data_YD[] = {0x01, 0x01, 0x00, 0x00};
+        memset(eapol_start_YD, 0xa5, 60);
+        memcpy(eapol_start_YD, eapol_header_YD, 14);
+        memcpy(eapol_start_YD + 14, start_data_YD, 4);
 
-    /**** EAPol START ****/
-    u_char start_data_YD[] = {0x01, 0x01, 0x00, 0x00};
-    memset (eapol_start_YD, 0xa5, 60);
-    memcpy (eapol_start_YD, eapol_header_YD, 14);
-    memcpy (eapol_start_YD + 14, start_data_YD, 4);
+        /****EAPol LOGOFF ****/
+        u_char logoff_data_YD[4] = {0x01, 0x02, 0x00, 0x00};
+        memset(eapol_logoff_YD, 0xa5, 60);
+        memcpy(eapol_logoff_YD, eapol_header_YD, 14);
+        memcpy(eapol_logoff_YD + 14, logoff_data_YD, 4);
 
-    /****EAPol LOGOFF ****/
-    u_char logoff_data_YD[4] = {0x01, 0x02, 0x00, 0x00};
-    memset (eapol_logoff_YD, 0xa5, 60);
-    memcpy (eapol_logoff_YD, eapol_header_YD, 14);
-    memcpy (eapol_logoff_YD + 14, logoff_data_YD, 4);
+        /****EAPol Keep alive ****/
+        u_char keep_data_YD[4] = {0x01, 0xfc, 0x00, 0x0c};
+        memset(eapol_keepalive_YD, 0xcc, 54 + username_length);
+        memcpy(eapol_keepalive_YD, eapol_header_YD, 14);
+        memcpy(eapol_keepalive_YD + 14, keep_data_YD, 4);
+        memset(eapol_keepalive_YD + 18, 0, 8);
+        memcpy(eapol_keepalive_YD + 26, &local_ip, 4);
 
-    /****EAPol Keep alive ****/
-    u_char keep_data_YD[4] = {0x01, 0xfc, 0x00, 0x0c};
-    memset (eapol_keepalive_YD, 0xcc, 54+ username_length);
-    memcpy (eapol_keepalive_YD, eapol_header_YD, 14);
-    memcpy (eapol_keepalive_YD + 14, keep_data_YD, 4);
-    memset (eapol_keepalive_YD + 18, 0, 8);
-    memcpy (eapol_keepalive_YD + 26, &local_ip, 4);
+        /* EAP RESPONSE IDENTITY */
+        u_char eap_resp_iden_head_YD[9] = {0x01, 0x00,
+                                           0x00, 26 + username_length,  /* eapol_length */
+                                           0x02, 0x2c,
+                                           0x00, 26 + username_length,       /* eap_length */
+                                           0x01};
+        char str1[2] = {'#', '0'};        //固定值
+        char str2[6] = {'#', '4', '.', '1', '.', '9'};    //版本号
+        char buf[64];   //useless
 
-    /* EAP RESPONSE IDENTITY */
-    u_char eap_resp_iden_head_YD[9] = {0x01, 0x00, 
-                                    0x00, 26 + username_length,  /* eapol_length */
-                                    0x02, 0x2c, 
-                                    0x00, 26 + username_length,       /* eap_length */
-                                    0x01};
-    char str1[2] = { '#', '0' };        //固定值
-    char str2[6] = { '#', '4', '.', '1', '.', '9' };    //版本号
-    char buf[64];   //useless
-    
-    memset(eap_response_ident_YD, 0xa5, 60);
-    data_index = 0;
-    memcpy (eap_response_ident_YD + data_index, eapol_header_YD, 14);
-    data_index += 14;
-    memcpy (eap_response_ident_YD + data_index, eap_resp_iden_head_YD, 9);
-    data_index += 9;
-    memcpy (eap_response_ident_YD + data_index, username, username_length);
-    data_index += username_length;
-    memcpy (eap_response_ident_YD + data_index, str1, 2);  //填充 #0
-    data_index += 2;
-    memcpy (eap_response_ident_YD + data_index, inet_ntop(AF_INET, &local_ip, buf, 32), 
-                            strlen(inet_ntop(AF_INET, &local_ip, buf, 32)));  //填充IP地址
-    data_index += strlen(inet_ntop(AF_INET, &local_ip, buf, 32));
-    memcpy (eap_response_ident_YD + data_index, str2, 6);  //填充#4.1.9
+        memset(eap_response_ident_YD, 0xa5, 60);
+        data_index = 0;
+        memcpy(eap_response_ident_YD + data_index, eapol_header_YD, 14);
+        data_index += 14;
+        memcpy(eap_response_ident_YD + data_index, eap_resp_iden_head_YD, 9);
+        data_index += 9;
+        memcpy(eap_response_ident_YD + data_index, username, username_length);
+        data_index += username_length;
+        memcpy(eap_response_ident_YD + data_index, str1, 2);  //填充 #0
+        data_index += 2;
+        memcpy(eap_response_ident_YD + data_index, inet_ntop(AF_INET, &local_ip, buf, 32),
+               strlen(inet_ntop(AF_INET, &local_ip, buf, 32)));  //填充IP地址
+        data_index += strlen(inet_ntop(AF_INET, &local_ip, buf, 32));
+        memcpy(eap_response_ident_YD + data_index, str2, 6);  //填充#4.1.9
 
 
-    /** EAP RESPONSE MD5 Challenge **/
-    u_char eap_resp_md5_head_YD[10] = {0x01, 0x00, 
-                                   0x00, 6 + 16 + username_length, /* eapol-length */
-                                   0x02, 
-                                   0x00, /* id to be set */
-                                   0x00, 6 + 16 + username_length, /* eap-length */
-                                   0x04, 0x10};
+        /** EAP RESPONSE MD5 Challenge **/
+        u_char eap_resp_md5_head_YD[10] = {0x01, 0x00,
+                                           0x00, 6 + 16 + username_length, /* eapol-length */
+                                           0x02,
+                                           0x00, /* id to be set */
+                                           0x00, 6 + 16 + username_length, /* eap-length */
+                                           0x04, 0x10};
 
-    data_index = 0;
-    memcpy (eap_response_md5ch_YD + data_index, eapol_header_YD, 14);
-    data_index += 14;
-    memcpy (eap_response_md5ch_YD + data_index, eap_resp_md5_head_YD, 10);
-    data_index += 26;// 剩余16位在收到REQ/MD5报文后由fill_password_md5填充 
-    memcpy (eap_response_md5ch_YD + data_index, username, username_length);
+        data_index = 0;
+        memcpy(eap_response_md5ch_YD + data_index, eapol_header_YD, 14);
+        data_index += 14;
+        memcpy(eap_response_md5ch_YD + data_index, eap_resp_md5_head_YD, 10);
+        data_index += 26;// 剩余16位在收到REQ/MD5报文后由fill_password_md5填充
+        memcpy(eap_response_md5ch_YD + data_index, username, username_length);
 
-    } 
-    else fprintf(stdout, "Unknown ISP Type!\n");
-    
+    } else fprintf(stdout, "Unknown ISP Type!\n");
+
 }
 
 
@@ -908,27 +855,23 @@ void init_frames()
  *  其中的Key
  * =====================================================================================
  */
-void fill_password_md5(uint8_t attach_key[], uint8_t eap_id)
-{
-    if( isp_type=='D' )
-    {
+void fill_password_md5(uint8_t attach_key[], uint8_t eap_id) {
+    if (isp_type == 'D') {
         char *psw_key;
         char *md5;
         psw_key = malloc(1 + password_length + 16);
         psw_key[0] = eap_id;
-        memcpy (psw_key + 1, password, password_length);
-        memcpy (psw_key + 1 + password_length, attach_key, 16);
+        memcpy(psw_key + 1, password, password_length);
+        memcpy(psw_key + 1 + password_length, attach_key, 16);
         md5 = get_md5_digest(psw_key, 1 + password_length + 16);
-        memcpy (eap_response_md5ch + 14 + 10, md5, 16);
-        free (psw_key);
-    } 
-    else if(isp_type=='Y')
-    {
+        memcpy(eap_response_md5ch + 14 + 10, md5, 16);
+        free(psw_key);
+    } else if (isp_type == 'Y') {
         char *psw_key = malloc(1 + password_length + 16);
         char *md5;
         psw_key[0] = eap_id;
-        memcpy (psw_key + 1, password, password_length);
-        memcpy (psw_key + 1 + password_length, attach_key, 16);
+        memcpy(psw_key + 1, password, password_length);
+        memcpy(psw_key + 1 + password_length, attach_key, 16);
 
 #if EAP_DEBUG_ON > 0
         printf("DEBUGER@@: MD5-Attach-KEY:\n");
@@ -937,10 +880,10 @@ void fill_password_md5(uint8_t attach_key[], uint8_t eap_id)
 
         md5 = get_md5_digest(psw_key, 1 + password_length + 16);
 
-        memset (eap_response_md5ch_YD + 14 + 5, eap_id, 1);
-        memcpy (eap_response_md5ch_YD + 14 + 10, md5, 16);
+        memset(eap_response_md5ch_YD + 14 + 5, eap_id, 1);
+        memcpy(eap_response_md5ch_YD + 14 + 10, md5, 16);
 
-        free (psw_key);
+        free(psw_key);
     }
 }
 
@@ -951,35 +894,34 @@ void fill_password_md5(uint8_t attach_key[], uint8_t eap_id)
  *  Description:  初始化本地信息。
  * =====================================================================================
  */
-void init_info()
-{
-    if(username == NULL || password == NULL){
-        fprintf (stderr,"Error: NO Username or Password promoted.\n"
+void init_info() {
+    if (username == NULL || password == NULL) {
+        fprintf(stderr, "Error: NO Username or Password promoted.\n"
                         "Try sguclient --help for usage.\n");
         exit(EXIT_FAILURE);
     }
-    
+
     username_length = strlen(username);
     password_length = strlen(password);
 
     if (user_ip)
-        local_ip = inet_addr (user_ip);
+        local_ip = inet_addr(user_ip);
     else
         local_ip = 0;
 
     if (user_mask)
-        local_mask = inet_addr (user_mask);
+        local_mask = inet_addr(user_mask);
     else
         local_mask = 0;
 
     if (user_gateway)
-        local_gateway = inet_addr (user_gateway);
+        local_gateway = inet_addr(user_gateway);
     else
         local_gateway = 0;
 
 
-    if (local_ip == -1 || local_mask == -1 || local_gateway == -1 ) {
-        fprintf (stderr,"ERROR: One of specified IP, MASK or Gateway \n"
+    if (local_ip == -1 || local_mask == -1 || local_gateway == -1) {
+        fprintf(stderr, "ERROR: One of specified IP, MASK or Gateway \n"
                         "in the arguments format error.\n");
         exit(EXIT_FAILURE);
     }
@@ -993,51 +935,49 @@ void init_info()
  *  同时设置pcap的初始化工作句柄。
  * =====================================================================================
  */
-void init_device()
-{
-    struct          bpf_program fp;			/* compiled filter program (expression) */
-    char            filter_exp[51];         /* filter expression [3] */
-    pcap_if_t       *alldevs;
-    pcap_addr_t     *addrs;
+void init_device() {
+    struct bpf_program fp;            /* compiled filter program (expression) */
+    char filter_exp[51];         /* filter expression [3] */
+    pcap_if_t *alldevs;
+    pcap_addr_t *addrs;
 
-	/* Retrieve the device list */
-	if(pcap_findalldevs(&alldevs, errbuf) == -1)
-	{
-		fprintf(stderr,"Error in pcap_findalldevs: %s\n", errbuf);
-		exit(1);
-	}
+    /* Retrieve the device list */
+    if (pcap_findalldevs(&alldevs, errbuf) == -1) {
+        fprintf(stderr, "Error in pcap_findalldevs: %s\n", errbuf);
+        exit(1);
+    }
 
     /* 使用第一块设备 */
-    if(dev == NULL) {
+    if (dev == NULL) {
         dev = alldevs->name;
     }
-    strcpy (dev_if_name, dev);
+    strcpy(dev_if_name, dev);
 
-	if (dev == NULL) {
-		fprintf(stderr, "Couldn't find default device: %s\n",
-			errbuf);
-		exit(EXIT_FAILURE);
+    if (dev == NULL) {
+        fprintf(stderr, "Couldn't find default device: %s\n",
+                errbuf);
+        exit(EXIT_FAILURE);
     }
 
-	/* open capture device */
-	handle = pcap_open_live(dev, SNAP_LEN, 1, 1000, errbuf);
+    /* open capture device */
+    handle = pcap_open_live(dev, SNAP_LEN, 1, 1000, errbuf);
 
-	if (handle == NULL) {
-		fprintf(stderr, "Couldn't open device %s: %s\n", dev, errbuf);
-		exit(EXIT_FAILURE);
-	}
+    if (handle == NULL) {
+        fprintf(stderr, "Couldn't open device %s: %s\n", dev, errbuf);
+        exit(EXIT_FAILURE);
+    }
 
-	/* make sure we're capturing on an Ethernet device [2] */
-	if (pcap_datalink(handle) != DLT_EN10MB) {
-		fprintf(stderr, "%s is not an Ethernet\n", dev);
-		exit(EXIT_FAILURE);
-	}
+    /* make sure we're capturing on an Ethernet device [2] */
+    if (pcap_datalink(handle) != DLT_EN10MB) {
+        fprintf(stderr, "%s is not an Ethernet\n", dev);
+        exit(EXIT_FAILURE);
+    }
 
     /* Get IP ADDR and MASK */
-    for (addrs = alldevs->addresses; addrs; addrs=addrs->next) {
+    for (addrs = alldevs->addresses; addrs; addrs = addrs->next) {
         if (addrs->addr->sa_family == AF_INET) {
-            local_ip = ((struct sockaddr_in *)addrs->addr)->sin_addr.s_addr;
-            local_mask = ((struct sockaddr_in *)addrs->netmask)->sin_addr.s_addr;
+            local_ip = ((struct sockaddr_in *) addrs->addr)->sin_addr.s_addr;
+            local_mask = ((struct sockaddr_in *) addrs->netmask)->sin_addr.s_addr;
         }
     }
 #ifdef __linux
@@ -1059,32 +999,32 @@ void init_device()
     }
     memcpy(local_mac, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
 #else
-    if (bsd_get_mac (dev, local_mac) != 0) {
-		fprintf(stderr, "FATIL: Fail getting BSD/MACOS Mac Address.\n");
-		exit(EXIT_FAILURE);
+    if (bsd_get_mac(dev, local_mac) != 0) {
+        fprintf(stderr, "FATIL: Fail getting BSD/MACOS Mac Address.\n");
+        exit(EXIT_FAILURE);
     }
 #endif
 
     /* construct the filter string */
     sprintf(filter_exp, "ether dst %02x:%02x:%02x:%02x:%02x:%02x"
                         " and ether proto 0x888e",
-                        local_mac[0], local_mac[1],
-                        local_mac[2], local_mac[3],
-                        local_mac[4], local_mac[5]);
+            local_mac[0], local_mac[1],
+            local_mac[2], local_mac[3],
+            local_mac[4], local_mac[5]);
 
-	/* compile the filter expression */
-	if (pcap_compile(handle, &fp, filter_exp, 0, 0) == -1) {
-		fprintf(stderr, "Couldn't parse filter %s: %s\n",
-		    filter_exp, pcap_geterr(handle));
-		exit(EXIT_FAILURE);
-	}
+    /* compile the filter expression */
+    if (pcap_compile(handle, &fp, filter_exp, 0, 0) == -1) {
+        fprintf(stderr, "Couldn't parse filter %s: %s\n",
+                filter_exp, pcap_geterr(handle));
+        exit(EXIT_FAILURE);
+    }
 
-	/* apply the compiled filter */
-	if (pcap_setfilter(handle, &fp) == -1) {
-		fprintf(stderr, "Couldn't install filter %s: %s\n",
-		    filter_exp, pcap_geterr(handle));
-		exit(EXIT_FAILURE);
-	}
+    /* apply the compiled filter */
+    if (pcap_setfilter(handle, &fp) == -1) {
+        fprintf(stderr, "Couldn't install filter %s: %s\n",
+                filter_exp, pcap_geterr(handle));
+        exit(EXIT_FAILURE);
+    }
     pcap_freecode(&fp);
     pcap_freealldevs(alldevs);
 }
@@ -1095,42 +1035,36 @@ void init_device()
  *  Description:  显示信息
  * =====================================================================================
  */
-void show_local_info ()
-{
+void show_local_info() {
     char buf[64];
-    char *is_auto_buf="Disabled";
-    char *isp_type_buf="Unknown";
+    char *is_auto_buf = "Disabled";
+    char *isp_type_buf = "Unknown";
     char *timeout_alarm_1x_buf = "Enabled";
-    if (1 == auto_rec)
-    {
-        is_auto_buf="Yes";
+    if (1 == auto_rec) {
+        is_auto_buf = "Yes";
     }
-    if ('D' == isp_type)
-    {
-        isp_type_buf="China Telecom";
+    if ('D' == isp_type) {
+        isp_type_buf = "China Telecom";
     }
-    if ('Y' == isp_type)
-    {
-        isp_type_buf="China Mobile";
+    if ('Y' == isp_type) {
+        isp_type_buf = "China Mobile";
     }
 
-    if (0 == timeout_alarm_1x)
-    {
+    if (0 == timeout_alarm_1x) {
         timeout_alarm_1x_buf = "Disabled";
     }
 
     printf("######## SGUClient  %s ####\n", SGU_VER);
     printf("Device:     %s\n", dev_if_name);
     printf("MAC:        %02x:%02x:%02x:%02x:%02x:%02x\n",
-                        local_mac[0],local_mac[1],local_mac[2],
-                        local_mac[3],local_mac[4],local_mac[5]);
+           local_mac[0], local_mac[1], local_mac[2],
+           local_mac[3], local_mac[4], local_mac[5]);
     printf("IP:         %s\n", inet_ntop(AF_INET, &local_ip, buf, 32));
     printf("MASK:       %s\n", inet_ntop(AF_INET, &local_mask, buf, 32));
     printf("Gateway:    %s\n", inet_ntop(AF_INET, &local_gateway, buf, 32));
     printf("ISP Type:   %s\n", isp_type_buf);
     printf("Auto Reconnect: %s\n", is_auto_buf);
-    if ( isp_type == 'D' )
-    {
+    if (isp_type == 'D') {
         printf("Using UDP Port: %d\n", clientPort);
     }
     printf("1x Timeout Alarm: %s\n", timeout_alarm_1x_buf);
@@ -1144,39 +1078,38 @@ void show_local_info ()
  *  Description:  初始化和解释命令行的字符串。getopt_long
  * =====================================================================================
  */
-void init_arguments(int *argc, char ***argv)
-{
+void init_arguments(int *argc, char ***argv) {
     /* Option struct for progrm run arguments */
     static struct option long_options[] =
-        {
-        {"help",        no_argument,        0,                     'h'},
-        {"background",  no_argument,        &background,             1},
-        {"auto",        no_argument,        &auto_rec,               1},
-        {"noheartbeat", no_argument,        &timeout_alarm_1x,       0},
-        {"device",      required_argument,  0,                       2},
-        {"kill",        no_argument,        0,                     'k'},
-        {"random",      no_argument,        0,                     'r'},
-        {"username",    required_argument,  0,                     'u'},
-        {"password",    required_argument,  0,                     'p'},
-        {"isp",         required_argument,  0,                     'i'},
-        {"ip",          required_argument,  0,                       4},
-        {"mask",        required_argument,  0,                       5},
-        {"gateway",     required_argument,  0,                     'g'},
-        {"showinfo",    no_argument,        0,                     's'},
-        {0, 0, 0, 0}
-        };
+            {
+                    {"help",        no_argument,       0,                 'h'},
+                    {"background",  no_argument,       &background,       1},
+                    {"auto",        no_argument,       &auto_rec,         1},
+                    {"noheartbeat", no_argument,       &timeout_alarm_1x, 0},
+                    {"device",      required_argument, 0,                 2},
+                    {"kill",        no_argument,       0,                 'k'},
+                    {"random",      no_argument,       0,                 'r'},
+                    {"username",    required_argument, 0,                 'u'},
+                    {"password",    required_argument, 0,                 'p'},
+                    {"isp",         required_argument, 0,                 'i'},
+                    {"ip",          required_argument, 0,                 4},
+                    {"mask",        required_argument, 0,                 5},
+                    {"gateway",     required_argument, 0,                 'g'},
+                    {"showinfo",    no_argument,       0,                 's'},
+                    {0,             0,                 0,                 0}
+            };
     clientPort = 61440;  //初始化时，客户端默认使用61440端口，若启用random则再产生随机端口来替换
     int c;
     while (1) {
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long ((*argc), (*argv), "hru:kp:i:g:s",
+        c = getopt_long((*argc), (*argv), "hru:kp:i:g:s",
                         long_options, &option_index);
         if (c == -1)
             break;
         switch (c) {
             case 0:
-               break;
+                break;
             case 'b':
                 background = 1;
                 break;
@@ -1214,57 +1147,54 @@ void init_arguments(int *argc, char ***argv)
             case 'i':
                 isp_type = *optarg;
                 break;
-           case 'r':
-               clientPort = generateRandomPort();
-               break;
+            case 'r':
+                clientPort = generateRandomPort();
+                break;
             case '?':
-                if (optopt == 'u' || optopt == 'p'|| optopt == 'g'|| optopt == 'd')
-                    fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+                if (optopt == 'u' || optopt == 'p' || optopt == 'g' || optopt == 'd')
+                    fprintf(stderr, "Option -%c requires an argument.\n", optopt);
                 exit(EXIT_FAILURE);
                 break;
             default:
-                fprintf (stderr,"Unknown option character `\\x%x'.\n", c);
+                fprintf(stderr, "Unknown option character `\\x%x'.\n", c);
                 exit(EXIT_FAILURE);
         }
     }
 }
 
 #ifndef __linux
-static int bsd_get_mac(const char ifname[], uint8_t eth_addr[])
-{
+
+static int bsd_get_mac(const char ifname[], uint8_t eth_addr[]) {
     struct ifreq *ifrp;
     struct ifconf ifc;
     char buffer[720];
-    int socketfd,error,len,space=0;
-    ifc.ifc_len=sizeof(buffer);
-    len=ifc.ifc_len;
-    ifc.ifc_buf=buffer;
+    int socketfd, error, len, space = 0;
+    ifc.ifc_len = sizeof(buffer);
+    len = ifc.ifc_len;
+    ifc.ifc_buf = buffer;
 
-    socketfd=socket(AF_INET,SOCK_DGRAM,0);
+    socketfd = socket(AF_INET, SOCK_DGRAM, 0);
 
-    if((error=ioctl(socketfd,SIOCGIFCONF,&ifc))<0)
-    {
+    if ((error = ioctl(socketfd, SIOCGIFCONF, &ifc)) < 0) {
         perror("ioctl faild");
         exit(1);
     }
-    if(ifc.ifc_len<=len)
-    {
-        ifrp=ifc.ifc_req;
-        do
-        {
-            struct sockaddr *sa=&ifrp->ifr_addr;
+    if (ifc.ifc_len <= len) {
+        ifrp = ifc.ifc_req;
+        do {
+            struct sockaddr *sa = &ifrp->ifr_addr;
 
-            if(((struct sockaddr_dl *)sa)->sdl_type==IFT_ETHER) {
-                if (strcmp(ifname, ifrp->ifr_name) == 0){
-                    memcpy (eth_addr, LLADDR((struct sockaddr_dl *)&ifrp->ifr_addr), 6);
+            if (((struct sockaddr_dl *) sa)->sdl_type == IFT_ETHER) {
+                if (strcmp(ifname, ifrp->ifr_name) == 0) {
+                    memcpy(eth_addr, LLADDR((struct sockaddr_dl *) &ifrp->ifr_addr), 6);
                     return 0;
                 }
             }
-            ifrp=(struct ifreq*)(sa->sa_len+(caddr_t)&ifrp->ifr_addr);
-            space+=(int)sa->sa_len+sizeof(ifrp->ifr_name);
-        }
-        while(space<ifc.ifc_len);
+            ifrp = (struct ifreq *) (sa->sa_len + (caddr_t) & ifrp->ifr_addr);
+            space += (int) sa->sa_len + sizeof(ifrp->ifr_name);
+        } while (space < ifc.ifc_len);
     }
     return 1;
 }
+
 #endif

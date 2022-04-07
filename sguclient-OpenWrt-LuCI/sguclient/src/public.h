@@ -28,7 +28,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <netpacket/packet.h>
-#include <pthread.h> 
+#include <pthread.h>
 #include <net/if.h>
 
 #define DOFFLINE         0
@@ -37,19 +37,19 @@
 #define XOFFLINE         0
 #define XONLINE          1
 
-typedef unsigned char   uint8;
-typedef unsigned short  uint16;
-typedef unsigned int    uint32;
+typedef unsigned char uint8;
+typedef unsigned short uint16;
+typedef unsigned int uint32;
 
 #define DRCOM_DEBUG_ON 0    //Drcom认证部分的调试开关，置1时输出有关调试信息
 
 
 int needToSendDrComStart;
-int  dstatus;
+int dstatus;
 uint8 drcom_pkt_counter;
 int xstatus;  //802.1x状态
 struct sockaddr_ll sa_ll;
-struct ethhdr  eth_header;
+struct ethhdr eth_header;
 char nodifyMsg[256];
 
 
@@ -66,12 +66,17 @@ char my_mac[ETH_ALEN];
 
 
 void print_mac(char *src);
+
 #if DRCOM_DEBUG_ON > 0
 void print_hex_drcom(char *hex, int len);
 #endif
+
 int checkCPULittleEndian();
+
 uint32_t big2little_32(uint32_t A);
-int create_ethhdr_sock(struct ethhdr * eth_header);
-int crt_sock(struct ifreq * ifr);
+
+int create_ethhdr_sock(struct ethhdr *eth_header);
+
+int crt_sock(struct ifreq *ifr);
 
 #endif

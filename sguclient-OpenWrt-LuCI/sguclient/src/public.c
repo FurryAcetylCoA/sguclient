@@ -21,7 +21,7 @@
 #include <string.h>
 #include <stdio.h>
 
-char EAP_TYPE_ID_SALT[9]  = {0x00, 0x44, 0x61, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff};
+char EAP_TYPE_ID_SALT[9] = {0x00, 0x44, 0x61, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff};
 char EAP_TYPE_MD5_SALT[9] = {0x00, 0x44, 0x61, 0x2a, 0x00, 0xff, 0xff, 0xff, 0xff};
 
 /*
@@ -32,16 +32,15 @@ char EAP_TYPE_MD5_SALT[9] = {0x00, 0x44, 0x61, 0x2a, 0x00, 0xff, 0xff, 0xff, 0xf
  *       Output:  无
  * =====================================================================================
  */
-void print_mac(char *src)
-{
+void print_mac(char *src) {
     char mac[32] = "";
     sprintf(mac, "%02x%02x%02x%02x%02x%02x",
-                        (unsigned char)src[0],
-                        (unsigned char)src[1],
-                        (unsigned char)src[2],
-                        (unsigned char)src[3],
-                        (unsigned char)src[4],
-                        (unsigned char)src[5]);
+            (unsigned char) src[0],
+            (unsigned char) src[1],
+            (unsigned char) src[2],
+            (unsigned char) src[3],
+            (unsigned char) src[4],
+            (unsigned char) src[5]);
 
     printf("%s\n", mac);
 }
@@ -75,10 +74,8 @@ void print_hex_drcom(char *hex, int len)
  *       Output:  是则返回1
  * =====================================================================================
  */
-inline int checkCPULittleEndian()
-{
-    union
-    {
+inline int checkCPULittleEndian() {
+    union {
         unsigned int a;
         unsigned char b;
     } c;
@@ -94,17 +91,18 @@ inline int checkCPULittleEndian()
  *       Output:  转换后的内容
  * =====================================================================================
  */
-inline uint32_t big2little_32(uint32_t A)
+inline uint32_t
+big2little_32(uint32_t
+A)
 {
-    return ((((uint32_t)(A) & 0xff000000) >>24) |
-        (((uint32_t)(A) & 0x00ff0000) >> 8) |
-        (((uint32_t)(A) & 0x0000ff00) << 8) |
-        (((uint32_t)(A) & 0x000000ff) << 24));
+return ((((uint32_t)(A) & 0xff000000) >>24) |
+(((uint32_t)(A) & 0x00ff0000) >> 8) |
+(((uint32_t)(A) & 0x0000ff00) << 8) |
+(((uint32_t)(A) & 0x000000ff) << 24));
 }
 
 // create socket and get src ether address
-int crt_sock(struct ifreq * ifr)
-{
+int crt_sock(struct ifreq *ifr) {
     int s;
     int err;
     s = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_PAE));
@@ -114,12 +112,12 @@ int crt_sock(struct ifreq * ifr)
         interface_name was set in get_from_file(), and saved in /etc/8021.config file
     */
     memset(ifr, 0, sizeof(struct ifreq));
-    strncpy(ifr->ifr_ifrn.ifrn_name, interface_name, sizeof(ifr->ifr_ifrn.ifrn_name)); // interface_name: global value, in public.h
+    strncpy(ifr->ifr_ifrn.ifrn_name, interface_name,
+            sizeof(ifr->ifr_ifrn.ifrn_name)); // interface_name: global value, in public.h
 
     /* get ip address */
     err = ioctl(s, SIOCGIFADDR, ifr);
-    if( err < 0)
-    {
+    if (err < 0) {
         perror("ioctl get ip addr error");
         close(s);
         return -1;
@@ -128,8 +126,7 @@ int crt_sock(struct ifreq * ifr)
 
     /* get hardware address */
     err = ioctl(s, SIOCGIFHWADDR, ifr);
-    if( err < 0)
-    {
+    if (err < 0) {
         perror("ioctl get hw_addr error");
         close(s);
         return -1;
@@ -137,8 +134,7 @@ int crt_sock(struct ifreq * ifr)
 
     // refer to: http://blog.chinaunix.net/uid-8048969-id-3417143.html
     err = ioctl(s, SIOCGIFFLAGS, ifr);
-    if( err < 0)
-    {
+    if (err < 0) {
         perror("ioctl get if_flag error");
         close(s);
         return -1;
@@ -146,20 +142,16 @@ int crt_sock(struct ifreq * ifr)
 
 
     // check the if's xstatus
-    if(ifr->ifr_ifru.ifru_flags & IFF_RUNNING )
-    {
+    if (ifr->ifr_ifru.ifru_flags & IFF_RUNNING) {
         printf("eth link up\n");
-    }
-    else
-    {
+    } else {
         printf("eth link down, please check the eth is ok\n");
         return -1;
     }
 
     ifr->ifr_ifru.ifru_flags |= IFF_PROMISC;
     err = ioctl(s, SIOCSIFFLAGS, ifr);
-    if( err < 0)
-    {
+    if (err < 0) {
         perror("ioctl set if_flag error");
         close(s);
         return -1;
@@ -169,25 +161,22 @@ int crt_sock(struct ifreq * ifr)
 }
 
 // the dial route all uses the same fixed eth_header and the same sock
-int create_ethhdr_sock(struct ethhdr * eth_header)
-{
+int create_ethhdr_sock(struct ethhdr *eth_header) {
     /* mac broadcast address, huawei's exchange */
     //const char dev_dest[ETH_ALEN] = {0x01, 0x80, 0xc2, 0x00, 0x00, 0x03};
     const char dev_dest[ETH_ALEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
     /* acquire interface's id and hardaddress based in struct ifreq and mysock*/
     struct ifreq *myifr;
-    myifr = (struct ifreq *) malloc( sizeof(struct ifreq) );
-    if( NULL == myifr )
-    {
+    myifr = (struct ifreq *) malloc(sizeof(struct ifreq));
+    if (NULL == myifr) {
         perror("Malloc for ifreq struct failed");
         exit(-1);
     }
 
     int mysock;
     mysock = crt_sock(myifr);
-    if(-1 == mysock)
-    {
+    if (-1 == mysock) {
         perror("Create socket failed");
         exit(-1);
     }
