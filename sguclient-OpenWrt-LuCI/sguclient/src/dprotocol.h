@@ -45,8 +45,7 @@
 #define RETRY_TIME 15
 
 
-uint8 drcom_pkt_counter;
-int  dstatus;
+
 char dstatusMsg[256];
 
 

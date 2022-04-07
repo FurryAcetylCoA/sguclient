@@ -394,6 +394,9 @@ void action_by_eap_type(enum EAPType pType,
             if( auto_rec )
             {
                fprintf(stdout, "&&Info: Authentication Failed, auto reconnect in a few sec...\n");
+                drcom_pkt_counter = 0;
+                dstatus = DOFFLINE;
+                needToSendDrComStart = 1;
                auto_reconnect(3); //重连，传入睡眠时间
             } 
             else
