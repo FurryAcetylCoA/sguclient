@@ -21,7 +21,7 @@
 
 #include "public.h"
 #include <sys/types.h>
-#include <stdio.h>
+#include <stdio.h> 
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,7 +41,6 @@
 
 #define DR_SERVER_IP "192.168.127.129"
 #define DR_PORT 61440
-#define RECV_BUF_LEN 1500
 #define RETRY_TIME 15
 
 
@@ -51,10 +50,9 @@ extern char dstatusMsg[256];
 
 
 void init_dial_env(void);
-
 void init_env_d();
 
-void *DrComServerDaemon(void *args);
+void* DrComServerDaemon(void *args);
 
 typedef struct {//注意端序
     uint8 ChallengeTimer[4];        //LE，本身是一个计数器，但被服务端兼Challenge使用
