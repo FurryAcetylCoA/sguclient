@@ -197,7 +197,7 @@ void auto_reconnect(int sleep_time_sec) {   //会有三种情况进入此处，�
     //重新初始化一些变量
     global_id = 1;
     drcom_pkt_counter = 0;//初始化drcom计数器
-    dstatus = DOFFLINE;//舒适化u244包检测变量
+    dstatus = DOFFLINE;//初始化u244包检测变量
     needToSendDrComStart = 1;//初始化u8包检测变量
     sleep(sleep_time_sec);
     send_eap_packet(EAPOL_START);
