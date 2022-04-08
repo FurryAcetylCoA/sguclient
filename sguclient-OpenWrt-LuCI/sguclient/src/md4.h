@@ -7,7 +7,8 @@
 /**
  * \brief          MD4 context structure
  */
-typedef struct {
+typedef struct
+{
     unsigned long total[2];     /*!< number of bytes processed  */
     unsigned long state[4];     /*!< intermediate digest state  */
     unsigned char buffer[64];   /*!< data block being processed */
@@ -26,7 +27,7 @@ extern "C" {
  *
  * \param ctx      context to be initialized
  */
-void md4_starts(md4_context *ctx);
+void md4_starts( md4_context *ctx );
 
 /**
  * \brief          MD4 process buffer
@@ -35,7 +36,7 @@ void md4_starts(md4_context *ctx);
  * \param input    buffer holding the  data
  * \param ilen     length of the input data
  */
-void md4_update(md4_context *ctx, unsigned char *input, unsigned int ilen);
+void md4_update( md4_context *ctx, unsigned char *input, unsigned int ilen );
 
 /**
  * \brief          MD4 final digest
@@ -43,7 +44,7 @@ void md4_update(md4_context *ctx, unsigned char *input, unsigned int ilen);
  * \param ctx      MD4 context
  * \param output   MD4 checksum result
  */
-void md4_finish(md4_context *ctx, unsigned char output[16]);
+void md4_finish( md4_context *ctx, unsigned char output[16] );
 
 /**
  * \brief          Output = MD4( input buffer )
@@ -52,7 +53,7 @@ void md4_finish(md4_context *ctx, unsigned char output[16]);
  * \param ilen     length of the input data
  * \param output   MD4 checksum result
  */
-void md4(unsigned char *input, int ilen, unsigned char output[16]);
+void md4( unsigned char *input, int ilen, unsigned char output[16] );
 
 
 #ifdef __cplusplus
