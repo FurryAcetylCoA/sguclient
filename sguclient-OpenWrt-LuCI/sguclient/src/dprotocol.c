@@ -792,6 +792,11 @@ static void PackDump(const char* string,int len,char * comment){
  */
 void* DrComServerDaemon(void *args)
 {
+    /*允许取消进程*/
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    /*异步取消， 线程接到取消信号后，立即退出*/
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
 	int ret;
     strcpy(dstatusMsg, "please log on first");
 
@@ -799,44 +804,31 @@ void* DrComServerDaemon(void *args)
 	dstatus = DOFFLINE;
 	needToSendDrComStart = 1;
 
-	while(1)//todo:检查是否涵盖所有情况
-	{
-		sleep(2);
-		if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
-		{
-			continue ;
-		}
+    while(1)//todo:检查是否涵盖所有情况
+    {
+        sleep(2);
+        if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
+        {
+            continue ;
+        }
 
-		if ( needToSendDrComStart )
-		{
-            if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
+        if ( needToSendDrComStart )
+        {
+            ret = SendU8GetChallenge();
+            if(ret != 0)
             {
-                continue ;
-            }
-			ret = SendU8GetChallenge();
-			if(ret != 0)
-			{
-				printf("DrCom: Sending login request U8 failed!\n");
-                continue;
-			}
-            printf("DrCom: Sending login request U8!\n");
-            if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
-            {
-                continue ;
+                printf("DrCom: 初始数据包发送失败!\n");
+                return NULL;
             }
             needToSendDrComStart = 0;
             continue;
-		}
+        }
         //下面开始处理收到的数据包 //todo:会不会一个包被重复处理多次？
         if ((revData[0]==0x07)&&(revData[4]==0x02)){ //Response for start request U8
             printf("Drcom: Got response for start request U8\n");
 
             if (dstatus==DOFFLINE){ //还没有发送U244
                 printf("Drcom: Sending login request U244\n");
-                if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
-                {
-                    continue ;
-                }
                 ret = SendU244Login();
                 if(ret != 0) {
                     printf("Drcom: Login request U244 failed\n");
@@ -846,10 +838,6 @@ void* DrComServerDaemon(void *args)
             }else if ( dstatus == DONLINE )  //drcom协议 已经上线成功
             {
                 printf("Drcom: Sending heart beat U38\n");
-                if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
-                {
-                    continue ;
-                }
                 ret = SendU38HeartBeat();
                 if(ret != 0)
                 {
@@ -861,45 +849,25 @@ void* DrComServerDaemon(void *args)
             continue;
         }
 
-		if ( (revData[0] == 0x07) && (revData[4] == 0x04) )  //U244登录成功
-		{
-            if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
-            {
-                continue ;
-            }
+        if ( (revData[0] == 0x07) && (revData[4] == 0x04) )  //U244登录成功
+        {
             U244ResponseParser();
-			printf("Drcom: Got U244 login response, U244 login success\n");
-            if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
-            {
-                continue ;
-            }
-			dstatus = DONLINE;
+            printf("Drcom: Got U244 login response, U244 login success\n");
+            dstatus = DONLINE;
             DrInfo.U8Counter=2;//登录成功后是从2开始数
-            if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
+            ret = SendU40DllUpdater(1);
+            if(ret != 0)
             {
-                continue ;
+                printf("Drcom: U40 phase 1 error\n");
+                continue;
             }
-			ret = SendU40DllUpdater(1);
-			if(ret != 0)
-			{
-				printf("Drcom: U40 phase 1 error\n");
-				continue;
-			}
-		}
+        }
 
         if ((revData[0] == 0x07) && (revData[4] == 0x0b) )  //U40-X
-		{
-            if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
-            {
-                continue ;
-            }
+        {
             U40ResponseParser();
             if (revData[5] == 0x02){
                 printf("Drcom: Got U40 response phase 2\n");
-                if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
-                {
-                    continue ;
-                }
                 SendU40DllUpdater(3);
             }else if (revData[5] == 0x04){
                 printf("Drcom: Got U40 response phase 4, U40 cycle done\n");
@@ -909,35 +877,27 @@ void* DrComServerDaemon(void *args)
                 DrInfo.U8Counter++;
                 if(ret != 0)
                 {
-                    printf("DrCom: Sending login request U8 failed!\n");
-                    continue;
+                    printf("DrCom: 初始数据包发送失败!\n");
+                    return NULL;
                 }
                 printf("Drcom: Done\n");
-			}
-            if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
-            {
-                continue;
-            }
-            drcom_pkt_counter++;
-		}
+            }drcom_pkt_counter++;
+        }
         if ((revData[0] == 0x07) && (revData[4] == 0x06) )  //U38-R
         {
             //U38的回包没啥好处理的
             printf("Drcom: Got U38 response. Keep alive cycle done!\n");
             sleep(1);
-            if ( xstatus == XOFFLINE)  //802.1x还没有上线  //todo:会不会有上完线又下线然后又需要上线的情况
-            {
-                continue ;
-            }
             ret = SendU40DllUpdater(1);
             if(ret != 0)
             {
                 printf("Drcom: U40 phase 1 error\n");
                 continue;
             }
+
         }
 
-	}
+    }
 	close(sock);
 	return NULL;
 }

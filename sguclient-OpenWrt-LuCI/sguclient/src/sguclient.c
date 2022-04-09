@@ -55,6 +55,7 @@ char         *user_ip = NULL;
 char         *user_mask = NULL;
 int           exit_flag = 0;
 int           auto_rec = 0;             /* 断线重拨 */
+int           is_rec = 0;             /* 防止掉线后，drcom进程的重新创建之后重复发送EAPOL_START包 */
 int           timeout_alarm_1x = 1;
 int           reconnect_times = 0;      /* 超时重连次数 */
 
@@ -88,6 +89,8 @@ u_char      eap_response_ident_YD[60];  /* 移动EAP RESPON/IDENTITY报文 */
 u_char      eap_response_md5ch_YD[60];  /* 移动EAP RESPON/MD5 报文 */
 
 uint8_t     global_id = 1;  //EAP/EAPOL数据包的ID号，不能改为0，否则无法认证
+
+pthread_t dtid;  //drcom线程的pid
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -151,6 +154,50 @@ void print_hex(uint8_t *array, int count)
 
 /*
  * ===  FUNCTION  ======================================================================
+ *         Name:  reStartDrcom
+ *  Description:  重新创建drcom认证进程
+ *        Input:  sleep_time_sec: 睡眠时间(秒)
+ *       Output:  无
+ * =====================================================================================
+ */
+
+void reStartDrcom(int sleep_time_sec)
+{
+    //防止掉线后，drcom进程的重新创建之后重复发送EAPOL_START包
+    is_rec = 1;
+
+    //重新初始化一些变量
+    global_id = 1;
+    memset(revData, 0, sizeof revData);
+    memset(revData2, 0, sizeof revData2);
+
+    int ret0 = pthread_cancel(dtid);//杀死线程
+    if( 0 != ret0)
+    {
+        perror("Cancel Drcom Thread Failed!");
+        exit(EXIT_FAILURE);
+    }
+    else printf("Cancel Drcom Thread Successfully.\n");
+
+    pthread_join(dtid,&ret0);//线程回收
+
+    int ret1 = pthread_create(&dtid, NULL, DrComServerDaemon, NULL);
+    if( 0 != ret1)
+    {
+        perror("Create Drcom Thread Failed!");
+        exit(EXIT_FAILURE);
+    }
+    else printf("Creat Drcom Thread Successfully.\n");
+
+    sleep(sleep_time_sec);
+
+    send_eap_packet(EAPOL_START);
+
+}
+
+
+/*
+ * ===  FUNCTION  ======================================================================
  *         Name:  DrcomAuthenticationEntry
  *  Description:  drcom认证入口
  *        Input:  无
@@ -163,7 +210,6 @@ void DrcomAuthenticationEntry()
     if (isp_type == 'D')
     {
 
-        pthread_t dtid;  //drcom线程的pid
         int ret;
 
         /*
@@ -200,25 +246,10 @@ void DrcomAuthenticationEntry()
  */
 void auto_reconnect(int sleep_time_sec)
 {   //会有三种情况进入此处，一是timeout，二和三分别为移动与电信的EAP_Failure
-    if (isp_type == 'D')                //电信部分
-    {
-        sleep(sleep_time_sec);
-        //重新初始化一些变量
-        global_id = 1;
-        drcom_pkt_counter = 0;//初始化drcom计数器
-        dstatus = DOFFLINE;//初始化u244包检测变量
-        needToSendDrComStart = 1;//初始化u8包检测变量
-        memset(revData, 0, sizeof revData);
-        memset(revData2, 0, sizeof revData2);
-        send_eap_packet(EAPOL_START);
-    }else if (isp_type == 'Y'){          //移动部分
-        //重新初始化一些变量
-        global_id = 1;
-        sleep(sleep_time_sec);
-        send_eap_packet(EAPOL_START);
-    }else {
-        fprintf(stdout, "Unknown ISP Type!\n");
-    }
+    //重新初始化一些变量
+    global_id = 1;
+    sleep(sleep_time_sec);
+    send_eap_packet(EAPOL_START);
 }
 
 /*
@@ -231,24 +262,29 @@ void auto_reconnect(int sleep_time_sec)
  */
 void time_out_handler()
 {
-    printf("SGUClient wait package response time out! \nCheck your physical network connection!\n");
-    if ( reconnect_times >= 5 )  //重连次数超过5次
-    {
-        printf("SGUClient tried reconnect more than 5 times, but all failed.\n");
-        printf("SGUClient exits now!\n");
-        exit(EXIT_FAILURE);
-    }
+    if (is_rec == 0){
+        printf("SGUClient wait package response time out! \nCheck your physical network connection!\n");
+        if ( reconnect_times >= 5 )  //重连次数超过5次
+        {
+            printf("SGUClient tried reconnect more than 5 times, but all failed.\n");
+            printf("SGUClient exits now!\n");
+            exit(EXIT_FAILURE);
+        }
 
-    if ( auto_rec == 1 )
-    {
-        printf("Try auto reconnect in 5 secs...\n");
-        reconnect_times++;
-        auto_reconnect(5);
-    }
-    else 
-    {
-        printf("Auto reconnection disabled by user,SGUClient exits now!\n");
-        exit(EXIT_FAILURE);
+        if ( auto_rec == 0 )
+        {
+            printf("Try auto reconnect in 5 secs...\n");
+            reconnect_times++;
+            auto_reconnect(5);
+        }
+        else
+        {
+            printf("Auto reconnection disabled by user,SGUClient exits now!\n");
+            exit(EXIT_FAILURE);
+        }
+    } else if (is_rec == 1){
+        sleep(60);//等待1分钟，使drcom进程重新创建并连接
+        is_rec == 0;//恢复 802.1x等待回应的闹钟超时处理函数
     }
 }
 
@@ -404,11 +440,8 @@ void action_by_eap_type(enum EAPType pType,
             fprintf(stdout, ">>Protocol: EAP_FAILURE\n");
             if( auto_rec )
             {
-               fprintf(stdout, "&&Info: Authentication Failed, auto reconnect in a few sec...\n");
-                drcom_pkt_counter = 0;
-                dstatus = DOFFLINE;
-                needToSendDrComStart = 1;
-               auto_reconnect(3); //重连，传入睡眠时间
+                fprintf(stdout, "&&Info: Authentication Failed, auto reconnect in a few sec...\n");
+                reStartDrcom(3);
             } 
             else
             {
