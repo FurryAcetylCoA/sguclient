@@ -146,20 +146,6 @@ void printCTCCNotification(const struct eap_header *eap_header) {
     }
 }
 
-/*
- * ===  FUNCTION  ======================================================================
- *         Name:  generateRandomPort
- *  Description:  产生随机UDP端口号
- *        Input:  无
- *       Output:  返回产生的随机UDP端口号
- * =====================================================================================
- */
-unsigned int generateRandomPort() {
-    unsigned int random;
-    srand((unsigned int) time(0));
-    random = 10000 + rand() % 55535;
-    return random;
-}
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -1286,7 +1272,7 @@ void init_arguments(int *argc, char ***argv) {
                 isp_type = *optarg;
                 break;
             case 'r':
-                clientPort = generateRandomPort();
+                clientPort = 0;//设置成0系统就会随机分配一个可用端口了
                 break;
             case '?':
                 if (optopt == 'u' || optopt == 'p' || optopt == 'g' || optopt == 'd')

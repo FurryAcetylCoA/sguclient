@@ -129,8 +129,6 @@ void printCTCCNotification(const struct eap_header *eap_header);
 
 void time_out_handler();
 
-unsigned int generateRandomPort();
-
 void print_hex(uint8_t *array, int count);
 
 void DrcomAuthenticationEntry();
