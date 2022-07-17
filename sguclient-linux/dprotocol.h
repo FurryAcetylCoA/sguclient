@@ -41,17 +41,15 @@
 
 #define DR_SERVER_IP "192.168.127.129"
 #define DR_PORT 61440
-#define RETRY_TIME 15
+#define RETRY_TIME 3
 #define RECV_BUF_LEN 1500
 
 extern uint8 revData[RECV_BUF_LEN];
-extern uint8 revData2[RECV_BUF_LEN]; //专门放那个公告,因为我不知道怎么丢弃这份数据
+
 extern char dstatusMsg[256];
 
 
-void init_dial_env(void);
-
-void init_env_d();
+void init_udp_socket();
 
 void *DrComServerDaemon(void *args);
 

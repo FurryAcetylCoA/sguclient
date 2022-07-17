@@ -39,7 +39,6 @@ static char *DMSG_SendU40_3 = "--3↑";
 
 dr_info DrInfo;
 uint8 revData[RECV_BUF_LEN];
-uint8 revData2[RECV_BUF_LEN]; //专门放那个公告,因为我不知道怎么丢弃这份数据
 uint8 drcom_pkt_counter;
 int dstatus;
 int xstatus;  //802.1x状态
@@ -47,7 +46,6 @@ int xstatus;  //802.1x状态
 char dstatusMsg[256];
 
 static int sock;
-static struct sockaddr_in drcomaddr;
 
 
 int SendU8GetChallenge();
@@ -399,7 +397,8 @@ int SendU244Login() {
 #endif
     if (revData[0] != 0x07 || revData[4] != 0x04)
         return -1;
-    udp_send_and_rev("0000", 4, revData2);//FIXME:如果不多接收一次,那么后面的程序会被公告影响
+    uint8 Announcement[RECV_BUF_LEN];
+    udp_send_and_rev(NULL, 0, Announcement);//todo: 有没有可能先收到公告
     return 0;
 }
 
@@ -674,77 +673,111 @@ uint32 GetU40_3Sum(uint8 *buf) {
 }
 /*
 * ===  FUNCTION  ======================================================================
-*         Name:  init_env_d
-*  Description:  初始化socket
+*         Name:  init_udp_socket
+*  Description:  初始化DrCom协议所使用的UDPsocket
 *  	  Input:  无
 *  	 Output:  无
 * =====================================================================================
 */
-// init socket
-void init_env_d() {
-    struct sockaddr_in local;
-    memset(&local, 0, sizeof(local));
-    local.sin_family = AF_INET;
-    local.sin_port = htons(clientPort);
-    local.sin_addr.s_addr = local_ip;
+void init_udp_socket() {
+    struct sockaddr_in LocalAddr;
+    struct sockaddr_in DrcomSerAddr;
+    memset(&LocalAddr, 0, sizeof(LocalAddr));
+    LocalAddr.sin_family = AF_INET;
+    LocalAddr.sin_port = htons(clientPort);
+    LocalAddr.sin_addr.s_addr = local_ip;
 
 
-    memset(&drcomaddr, 0, sizeof(drcomaddr));
-    drcomaddr.sin_family = AF_INET;
-    drcomaddr.sin_port = htons(DR_PORT);
-    inet_pton(AF_INET, DR_SERVER_IP, &drcomaddr.sin_addr);
+    memset(&DrcomSerAddr, 0, sizeof(DrcomSerAddr));
+    DrcomSerAddr.sin_family = AF_INET;
+    DrcomSerAddr.sin_port = htons(DR_PORT);
+    inet_pton(AF_INET, DR_SERVER_IP, &DrcomSerAddr.sin_addr);
 
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (-1 == sock) {
-        perror("Create drcom socket failed");
+        perror("Create drcom socket failed\n");
         exit(-1);
     }
 
-    if (0 != bind(sock, (struct sockaddr *) &local, sizeof(local))) {
-        perror("Bind drcom sock failed");
+    if (0 != bind(sock, (struct sockaddr *) &LocalAddr, sizeof(LocalAddr))) {
+        perror("Bind drcom socket failed\n");
+        exit(-1);
+    }
+
+    //UDP是无连接的，这里的connect只是在内核的网络层面上建立“这个socket“与”这个地址“的关联，这么做有以下几点好处
+    //      1：使用这个socket收发包时，不再需要提供对端地址
+    //      2：可以在对端不可达时捕获到相应的异步ICMP错误
+    //      3：这个socket只会接收到DrCom服务器发来的数据包，而其他地址往这个端口发包将被内核直接丢弃，有助于提升稳健性
+    if (0 != connect(sock, (struct sockaddr *) &DrcomSerAddr,sizeof (DrcomSerAddr))){
+        perror("Connect drcom socket failed\n");
+        perror("This might caused by wrong interface this socket have bound to\n");
+        //已知的一种出错形式是：当bind到本地环回时，connect本地环回以外的任何地址都会失败。
+        //除非用户在dev参数传入了本地环回，否则这种情况应当不会发生
         exit(-1);
     }
 }
 
-/*
- * ===  FUNCTION  ======================================================================
- *         Name:  init_dial_env
- *  Description:  已弃用
- *  	  Input:  无
- *  	 Output:  无
- * =====================================================================================
- */
-void init_dial_env() {
 
-}
 
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  udp_send_and_rev
  *  Description:  发送并接收udp协议的数据包
- *  	  Input:  *send_buf: 指向待发送数据的指针; send_len: 待发送数据的长度;
+ *  	  Input:  *send_buf: 指向待发送数据的指针; send_len: 待发送数据的长度; 这两者任一为空表示只收不发
  				  *recv_buf: 指向接收缓冲区的指针
  *  	 Output:  返回接收的长度
  * =====================================================================================
  */
 int udp_send_and_rev(uint8 *send_buf, int send_len, uint8 *recv_buf) {
-    int nrecv_send, addrlen = sizeof(struct sockaddr_in);
-    struct sockaddr_in clntaddr;
     int try_times = RETRY_TIME;
+    ssize_t ret;
+    struct timeval TimeVal;
+    fd_set FdSet;
 
     while (try_times--) {
-        nrecv_send = sendto(sock, send_buf, send_len, 0, (struct sockaddr *) &drcomaddr, addrlen);
-        if (nrecv_send == send_len) break;
-    }
+        if (send_len != 0 && send_buf != NULL) {
+            ret = send(sock, send_buf, send_len, 0);
+            if (ret == -1) {
+                perror("Udp send failed. This should not happen!\n");//正常来讲，UDP发送是不会“失败”的（就算对面根本没收到）。如果这里报错，通常是socket本身的问题
+                exit(-1);
+            }
+        }
 
-    try_times = RETRY_TIME;
-    while (try_times--) {
-        nrecv_send = recvfrom(sock, recv_buf, RECV_BUF_LEN, 0,
-                              (struct sockaddr *) &clntaddr, &addrlen);
-        if (nrecv_send > 0 && memcmp(&clntaddr.sin_addr, &drcomaddr.sin_addr, 4) == 0) break;
-    }
+        //接收
+        FD_ZERO(&FdSet);
+        FD_SET(sock, &FdSet);
+        TimeVal.tv_sec = 4;
+        TimeVal.tv_usec = 0;  //设置超时时间4秒，应该够了
 
-    return nrecv_send;
+        ret = select(sock + 1, &FdSet, NULL, NULL, &TimeVal);
+        //通过select函数来在一定时限内阻塞式地监听这个socket是否准备好读（即有数据发进来了）
+        //这是为了修复先前版本直接用recvfrom而引起的——任何一次丢包都会导致整个线程无止境地阻塞，直至掉线
+        //Must reset TimeVal and FdSet after each use
+        if (ret == -1) {
+            perror("UDP socket select failed. This is very strange\n");//这里报错基本就意味着程序的编写有问题，与运行环境无关
+            exit(-1);
+        }
+
+        if (FD_ISSET(sock, &FdSet)) {//收到内容
+            ret = recv(sock, recv_buf, RECV_BUF_LEN, 0);
+            if (ret == -1) {
+                if (errno == ECONNREFUSED) { //处理收到的ICMP错误
+                    //这得是之前的包发到了DrCom服务器上，但是内核发现没有程序在监听对应的UDP端口才会反回这个错误
+                    perror("UDP packet was delivered. However Drcom service is not listing the correspond port\n");
+                } else {
+                    perror("Unknown udp error\n");
+                }
+            }else{
+                break; //成功接收
+            }
+        } else {//超时
+            perror("UDP timeout");
+            if (try_times > 0) {
+                perror("Try send it again\n");
+            }
+        }
+    }
+    return ret;
 }
 
 /*

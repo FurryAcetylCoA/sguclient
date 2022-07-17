@@ -219,10 +219,7 @@ void DrcomAuthenticationEntry() {
         strcpy(user_id, username);
         strcpy(passwd, password);
 
-
-        // init ip mac and socks
-        init_dial_env();
-        init_env_d();
+        init_udp_socket();
 
         ret = pthread_create(&dtid, NULL, DrComServerDaemon, NULL);
         if (0 != ret) {
@@ -262,7 +259,6 @@ void reStartDrcom(int sleep_time_sec) {
     //重新初始化一些变量
     eapGlobalId = 1;
     memset(revData, 0, sizeof revData);
-    memset(revData2, 0, sizeof revData2);
 
     int ret0 = pthread_cancel(dtid);//杀死线程
     if (0 != ret0) {
