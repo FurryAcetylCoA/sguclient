@@ -57,7 +57,10 @@
 /* 宏定义 802.1x等待回应数据包的等待超时时间 */
 #define WAIT_START_TIME_OUT 15     //等待数据包回应，默认等待15s
 #define WAIT_RESPONSE_TIME_OUT 900 //等待数据包回应，默认等待15mins
-
+/* 关于 WAIT_RESPONSE_TIME_OUT应该设置为多少
+ *  这个值之前设置为900，即15分钟。
+ *  之所以设置成这么长，是因为之前的测试表明，如果服务器在五分钟内没有收到客户端的EAP心跳包，就会重发请求一次,最多重发三次）
+ * */
 struct eap_header {
     uint8_t eapol_v;
     uint8_t eapol_t;

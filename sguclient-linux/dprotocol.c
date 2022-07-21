@@ -17,6 +17,29 @@
  */
 
 #include "dprotocol.h"
+#define no_drLog_info  0
+#define no_drLog_warn  0
+#define no_drLog_err   0
+
+#define drLog(_TYPE_,...) drLog_##_TYPE_(__VA_ARGS__)
+#if no_drLog_info==0
+#define drLog_info(...) printf(__VA_ARGS__);
+#else
+#define drLog_info(...)
+#endif
+
+#if no_drLog_warn==0
+#define drLog_warn(...) printf(__VA_ARGS__);
+#else
+#define drLog_warn(...)
+#endif
+
+#if no_drLog_err==0
+#define drLog_err(...)  perror(__VA_ARGS__);
+#else
+#define drLog_err(...)
+#endif
+
 
 //默认使用简明日志
 static char *DMSG_SendU8 = "Drcom: U8↑--";
@@ -473,8 +496,7 @@ void FillCheckSum(uint8 *ChallengeFromU8, uint16 Length, uint8 *CheckSum) {
         *((uint8 *) CheckSum + 7) = Hash[14];
 
     } else if (type == 0) {
-
-        printf("WARNING:收到旧版U8质询值！\n");
+        drLog(warn,"WARNING:收到旧版U8质询值！\n");
         //尽管这不应该发生，但此处为了保持一定的兼容性，仍然保留了这两句
         //要注意的是，旧版的校验方式和整个U244的内容有关，详见drcom_crc32函数
         *((uint32 *) CheckSum + 0) = checkCPULittleEndian() == 0 ? big2little_32(20000711) : 20000711;
@@ -522,21 +544,21 @@ int SendU40DllUpdater(uint8 type) {
     *  只存在于U40-3，其他包均为0。
     */
     if (debug_log_style) {
-        printf("%s\tDrcom: Sending U40 response phase %d.\n", getTime(), type);
+        drLog(info,"%s\tDrcom: Sending U40 response phase %d.\n", getTime(), type);
     } else {
         switch (type) {
             case 1:
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_SendU40_1);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_SendU40_1);
                 break;
             case 3:
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_SendU40_3);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_SendU40_3);
                 break;
             default:
-                printf("WTF??");
+                drLog(info,"WTF??");
                 break;
         }
     }
@@ -695,12 +717,12 @@ void init_udp_socket() {
 
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (-1 == sock) {
-        perror("Create drcom socket failed\n");
+        drLog(err,"Create drcom socket failed\n");
         exit(-1);
     }
 
     if (0 != bind(sock, (struct sockaddr *) &LocalAddr, sizeof(LocalAddr))) {
-        perror("Bind drcom socket failed\n");
+        drLog(err,"Bind drcom socket failed\n");
         exit(-1);
     }
 
@@ -709,8 +731,8 @@ void init_udp_socket() {
     //      2：可以在对端不可达时捕获到相应的异步ICMP错误
     //      3：这个socket只会接收到DrCom服务器发来的数据包，而其他地址往这个端口发包将被内核直接丢弃，有助于提升稳健性
     if (0 != connect(sock, (struct sockaddr *) &DrcomSerAddr,sizeof (DrcomSerAddr))){
-        perror("Connect drcom socket failed\n");
-        perror("This might caused by wrong interface this socket have bound to\n");
+        drLog(err,"Connect drcom socket failed\n");
+        drLog(err,"This might caused by wrong interface this socket have bound to\n");
         //已知的一种出错形式是：当bind到本地环回时，connect本地环回以外的任何地址都会失败。
         //除非用户在dev参数传入了本地环回，否则这种情况应当不会发生
         exit(-1);
@@ -725,7 +747,7 @@ void init_udp_socket() {
  *  Description:  发送并接收udp协议的数据包
  *  	  Input:  *send_buf: 指向待发送数据的指针; send_len: 待发送数据的长度; 这两者任一为空表示只收不发
  				  *recv_buf: 指向接收缓冲区的指针
- *  	 Output:  返回接收的长度
+ *  	 Output:  返回接收的长度//todo: 发送失败给个提示
  * =====================================================================================
  */
 int udp_send_and_rev(uint8 *send_buf, int send_len, uint8 *recv_buf) {
@@ -738,7 +760,7 @@ int udp_send_and_rev(uint8 *send_buf, int send_len, uint8 *recv_buf) {
         if (send_len != 0 && send_buf != NULL) {
             ret = send(sock, send_buf, send_len, 0);
             if (ret == -1) {
-                perror("Udp send failed. This should not happen!\n");//正常来讲，UDP发送是不会“失败”的（就算对面根本没收到）。如果这里报错，通常是socket本身的问题
+                drLog(err,"Udp send failed. This should not happen!\n");//正常来讲，UDP发送是不会“失败”的（就算对面根本没收到）。如果这里报错，通常是socket本身的问题
                 exit(-1);
             }
         }
@@ -754,7 +776,7 @@ int udp_send_and_rev(uint8 *send_buf, int send_len, uint8 *recv_buf) {
         //这是为了修复先前版本直接用recvfrom而引起的——任何一次丢包都会导致整个线程无止境地阻塞，直至掉线
         //Must reset TimeVal and FdSet after each use
         if (ret == -1) {
-            perror("UDP socket select failed. This is very strange\n");//这里报错基本就意味着程序的编写有问题，与运行环境无关
+            drLog(err,"UDP socket select failed. This is very strange\n");//这里报错基本就意味着程序的编写有问题，与运行环境无关
             exit(-1);
         }
 
@@ -763,17 +785,17 @@ int udp_send_and_rev(uint8 *send_buf, int send_len, uint8 *recv_buf) {
             if (ret == -1) {
                 if (errno == ECONNREFUSED) { //处理收到的ICMP错误
                     //这得是之前的包发到了DrCom服务器上，但是内核发现没有程序在监听对应的UDP端口才会反回这个错误
-                    perror("UDP packet was delivered. However Drcom service is not listing the correspond port\n");
+                    drLog(err,"UDP packet was delivered. However Drcom service is not listing the correspond port\n");
                 } else {
-                    perror("Unknown udp error\n");
+                    drLog(err,"Unknown udp error\n");
                 }
             }else{
                 break; //成功接收
             }
         } else {//超时
-            perror("UDP timeout");
+            drLog(err,"UDP timeout");
             if (try_times > 0) {
-                perror("Try send it again\n");
+                drLog(err,"Try send it again\n");
             }
         }
     }
@@ -821,7 +843,7 @@ void U40ResponseParser() {
         //这种包可能是用来更新mydll用的，但是发过来的dll不完整.当然最好不要完整发过来，那个文件看起来不小
         //正常来讲如果不主动发U40-5或发送含有错误版本的U40-1/3时是不会进入这里的
         memcpy(DrInfo.MyDllVer, revData + 28, 4);//所以这里还是更新一下MyDllVer比较好
-        printf("%s\tInfo: Got dll from U40. Ignored.\n",getTime());
+        drLog(info,"%s\tInfo: Got dll from U40. Ignored.\n",getTime());
 
     } else {
         memcpy(DrInfo.ChallengeTimer, revData + 16, 2);// 只有不是File的时候revData[16:19]才是时间
@@ -839,7 +861,7 @@ void U40ResponseParser() {
  * =====================================================================================
  */
 static void perrorAndSleep(char *str) {
-    printf("%s\tError Report: %s\n", getTime(),str);
+    drLog(warn,"%s\tError Report: %s\n", getTime(),str);
     strcpy(dstatusMsg, str);
     dstatus = DOFFLINE;
     sleep(20);
@@ -890,12 +912,12 @@ void *DrComServerDaemon(void *args) {
 
         if (needToSendDrComStart) {
 
-            printf("%s\t%s", getTime(), DMSG_SendU8);
+            drLog(info,"%s\t%s", getTime(), DMSG_SendU8);
             ret = SendU8GetChallenge();
             if (ret != 0) {
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_SendU8_Fail);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_SendU8_Fail);
                 return NULL;
             }
             needToSendDrComStart = 0;
@@ -904,36 +926,36 @@ void *DrComServerDaemon(void *args) {
         //下面开始处理收到的数据包 这是一个以收到的数据包的标志位驱动的状态机//todo:会不会一个包被重复处理多次？
         if ((revData[0] == 0x07) && (revData[4] == 0x02)) { //Response for start request U8
             if (debug_log_style)
-                printf("%s\t", getTime());
-            printf("%s", DMSG_GotU8R);
+                drLog(info,"%s\t", getTime());
+            drLog(info,"%s", DMSG_GotU8R);
 
             if (dstatus == DOFFLINE) { //还没有发送U244
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_SendU244);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_SendU244);
                 ret = SendU244Login();
                 if (ret != 0) {
                     if (debug_log_style)
-                        printf("%s\t", getTime());
-                    printf("%s", DMSG_SendU244_Fail);
+                        drLog(info,"%s\t", getTime());
+                    drLog(info,"%s", DMSG_SendU244_Fail);
                     continue;
                 }
 
             } else if (dstatus == DONLINE)  //drcom协议 已经上线成功
             {
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_SendU38);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_SendU38);
                 ret = SendU38HeartBeat();
                 if (ret != 0) {
                     if (debug_log_style)
-                        printf("%s\t", getTime());
-                    printf("%s", DMSG_SendU38_Fail);
+                        drLog(info,"%s\t", getTime());
+                    drLog(info,"%s", DMSG_SendU38_Fail);
                     continue;
                 }
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_SentU38);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_SentU38);
             }
             continue;
         }
@@ -942,15 +964,15 @@ void *DrComServerDaemon(void *args) {
         {
             U244ResponseParser();
             if (debug_log_style)
-                printf("%s\t", getTime());
-            printf("%s", DMSG_LoginU244);
+                drLog(info,"%s\t", getTime());
+            drLog(info,"%s", DMSG_LoginU244);
             dstatus = DONLINE;
             DrInfo.U8Counter = 2;//登录成功后是从2开始数
             ret = SendU40DllUpdater(1);
             if (ret != 0) {
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_SendU40_1_Fail);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_SendU40_1_Fail);
                 continue;
             }
         }
@@ -960,27 +982,27 @@ void *DrComServerDaemon(void *args) {
             U40ResponseParser();
             if (revData[5] == 0x02) {
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_GotU40_2);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_GotU40_2);
                 SendU40DllUpdater(3);
             } else if (revData[5] == 0x04) {
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_FinishU40);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_FinishU40);
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_StartInterval);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_StartInterval);
                 sleep(8);
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_DoneInterval);
-                printf("%s\t%s", getTime(), DMSG_SendU8);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_DoneInterval);
+                drLog(info,"%s\t%s", getTime(), DMSG_SendU8);
                 ret = SendU8GetChallenge();
                 DrInfo.U8Counter++;
                 if (ret != 0) {
                     if (debug_log_style)
-                        printf("%s\t", getTime());
-                    printf("%s", DMSG_SendU8_Fail);
+                        drLog(info,"%s\t", getTime());
+                    drLog(info,"%s", DMSG_SendU8_Fail);
                     return NULL;
                 }
 
@@ -991,15 +1013,15 @@ void *DrComServerDaemon(void *args) {
         if ((revData[0] == 0x07) && (revData[4] == 0x06))  //U38-R
         {
             if (debug_log_style)
-                printf("%s\t", getTime());
+                drLog(info,"%s\t", getTime());
             //U38的回包没啥好处理的
-            printf("%s", DMSG_GotU38);
+            drLog(info,"%s", DMSG_GotU38);
             sleep(1);
             ret = SendU40DllUpdater(1);
             if (ret != 0) {
                 if (debug_log_style)
-                    printf("%s\t", getTime());
-                printf("%s", DMSG_SendU40_1_Fail);
+                    drLog(info,"%s\t", getTime());
+                drLog(info,"%s", DMSG_SendU40_1_Fail);
                 continue;
             }
         }
