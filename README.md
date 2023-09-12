@@ -1,5 +1,7 @@
 # 韶关学院校园网第三方拨号器
 
+## 注意
+* 换认证方案商了。新方案不需要客户端,这个项目没用了，见[SGU-Script](https://github.com/IDeLoveYou/SGU-Script)
 
 ## 关于
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SGUClient是一个纯C系语言编写的**韶关学院**学生宿舍区第三方网络认证拨号器。现在有Ubuntu和OpenWrt二进制文件可用。当然了，得益于C系语言良好的可移植性，你可以获得SGUClient的源代码然后轻松移植到你需要的平台上（Feel free to make changes）。
